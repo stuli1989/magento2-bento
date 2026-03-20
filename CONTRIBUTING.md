@@ -14,7 +14,7 @@ This package can be developed standalone (without a full Magento installation) u
 ### Setup
 
 ```bash
-git clone https://github.com/artlounge/magento2-bento.git
+git clone https://github.com/stuli1989/magento2-bento.git
 cd magento2-bento
 composer install
 ```

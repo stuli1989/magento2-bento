@@ -5,7 +5,7 @@
     "license": "MIT",
     "version": "1.0.0",
     "keywords": ["magento2", "bento", "email", "marketing", "async", "events", "queue"],
-    "homepage": "https://github.com/artlounge/magento2-bento",
+    "homepage": "https://github.com/stuli1989/magento2-bento",
     "require": {
         "php": ">=8.1",
         "magento/framework": "*",
