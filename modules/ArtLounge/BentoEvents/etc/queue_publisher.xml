@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Message Queue Publisher Configuration
+ *
+ * Configures the publisher for abandoned cart messages.
+ *
+ * NOTE: We define publishers for both AMQP and DB connections.
+ * Magento will use AMQP if available, otherwise fall back to DB.
+ * The publisher is selected based on the connection configured in env.php.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework-message-queue:etc/publisher.xsd">
+
+    <!-- Publisher for Abandoned Cart Topic -->
+    <publisher topic="artlounge.abandoned.cart">
+        <connection name="amqp" exchange="artlounge.abandoned.cart" disabled="false"/>
+    </publisher>
+
+</config>

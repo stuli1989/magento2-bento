@@ -1,0 +1,50 @@
+{
+    "artlounge_bento_abandoned_cart_schedule": {
+        "column": {
+            "schedule_id": true,
+            "quote_id": true,
+            "store_id": true,
+            "customer_email": true,
+            "grand_total": true,
+            "scheduled_at": true,
+            "check_at": true,
+            "quote_updated_at": true,
+            "status": true,
+            "processed_at": true,
+            "last_sent_at": true,
+            "attempts": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "ARTLOUNGE_BENTO_ABANDONED_CART_QUOTE_ID": true
+        },
+        "index": {
+            "ARTLOUNGE_BENTO_ABANDONED_CART_STATUS": true,
+            "ARTLOUNGE_BENTO_ABANDONED_CART_CHECK_AT": true,
+            "ARTLOUNGE_BENTO_ABANDONED_CART_STORE_ID": true
+        }
+    },
+    "artlounge_bento_event_outbox": {
+        "column": {
+            "outbox_id": true,
+            "event_name": true,
+            "arguments": true,
+            "store_id": true,
+            "status": true,
+            "attempts": true,
+            "max_attempts": true,
+            "error_message": true,
+            "created_at": true,
+            "processed_at": true,
+            "next_retry_at": true
+        },
+        "constraint": {
+            "PRIMARY": true
+        },
+        "index": {
+            "BENTO_OUTBOX_STATUS_RETRY": true,
+            "BENTO_OUTBOX_EVENT_NAME": true,
+            "BENTO_OUTBOX_CREATED_AT": true
+        }
+    }
+}

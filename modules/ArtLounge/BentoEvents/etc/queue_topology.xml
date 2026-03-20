@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Message Queue Topology Configuration (RabbitMQ)
+ *
+ * Defines the exchange and queue bindings for abandoned cart processing.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework-message-queue:etc/topology.xsd">
+
+    <!-- Exchange for Abandoned Cart Messages -->
+    <exchange name="artlounge.abandoned.cart"
+              type="topic"
+              connection="amqp">
+        <binding id="artloungeAbandonedCartBinding"
+                 topic="artlounge.abandoned.cart"
+                 destinationType="queue"
+                 destination="artlounge.abandoned.cart"/>
+    </exchange>
+
+</config>

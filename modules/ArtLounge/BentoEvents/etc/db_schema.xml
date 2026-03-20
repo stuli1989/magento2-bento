@@ -1,0 +1,88 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Database Schema
+ */
+-->
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+
+    <!-- Abandoned Cart Schedule Table -->
+    <table name="artlounge_bento_abandoned_cart_schedule" resource="default" engine="innodb"
+           comment="Bento Abandoned Cart Schedule">
+        <column xsi:type="int" name="schedule_id" unsigned="true" nullable="false" identity="true"
+                comment="Schedule ID"/>
+        <column xsi:type="int" name="quote_id" unsigned="true" nullable="false" comment="Quote ID"/>
+        <column xsi:type="smallint" name="store_id" unsigned="true" nullable="false" comment="Store ID"/>
+        <column xsi:type="varchar" name="customer_email" nullable="true" length="255" comment="Customer Email"/>
+        <column xsi:type="decimal" name="grand_total" scale="4" precision="20" nullable="false" default="0"
+                comment="Grand Total"/>
+        <column xsi:type="timestamp" name="scheduled_at" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Scheduled At"/>
+        <column xsi:type="timestamp" name="check_at" nullable="false" comment="Check At"/>
+        <column xsi:type="varchar" name="quote_updated_at" nullable="true" length="50"
+                comment="Quote Updated At"/>
+        <column xsi:type="varchar" name="status" nullable="false" length="20" default="pending"
+                comment="Status"/>
+        <column xsi:type="timestamp" name="processed_at" nullable="true" comment="Processed At"/>
+        <column xsi:type="timestamp" name="last_sent_at" nullable="true" comment="Last Sent At"/>
+        <column xsi:type="smallint" name="attempts" unsigned="true" nullable="false" default="0"
+                comment="Attempts"/>
+
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="schedule_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="ARTLOUNGE_BENTO_ABANDONED_CART_QUOTE_ID">
+            <column name="quote_id"/>
+        </constraint>
+
+        <index referenceId="ARTLOUNGE_BENTO_ABANDONED_CART_STATUS" indexType="btree">
+            <column name="status"/>
+        </index>
+        <index referenceId="ARTLOUNGE_BENTO_ABANDONED_CART_CHECK_AT" indexType="btree">
+            <column name="check_at"/>
+        </index>
+        <index referenceId="ARTLOUNGE_BENTO_ABANDONED_CART_STORE_ID" indexType="btree">
+            <column name="store_id"/>
+        </index>
+    </table>
+
+    <!-- Event Outbox Table — persists failed AMQP publishes for replay -->
+    <table name="artlounge_bento_event_outbox" resource="default" engine="innodb"
+           comment="Bento Event Outbox for AMQP Publish Failures">
+        <column xsi:type="int" name="outbox_id" unsigned="true" nullable="false" identity="true"
+                comment="Outbox ID"/>
+        <column xsi:type="varchar" name="event_name" nullable="false" length="100"
+                comment="Async Event Name"/>
+        <column xsi:type="text" name="arguments" nullable="false" comment="Serialized JSON Arguments"/>
+        <column xsi:type="smallint" name="store_id" unsigned="true" nullable="false" default="0"
+                comment="Store ID"/>
+        <column xsi:type="varchar" name="status" nullable="false" length="20" default="pending"
+                comment="Status: pending, processing, completed, failed"/>
+        <column xsi:type="smallint" name="attempts" unsigned="true" nullable="false" default="0"
+                comment="Replay Attempts"/>
+        <column xsi:type="smallint" name="max_attempts" unsigned="true" nullable="false" default="5"
+                comment="Max Replay Attempts"/>
+        <column xsi:type="text" name="error_message" nullable="true" comment="Last Error Message"/>
+        <column xsi:type="timestamp" name="created_at" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Created At"/>
+        <column xsi:type="timestamp" name="processed_at" nullable="true" comment="Processed At"/>
+        <column xsi:type="timestamp" name="next_retry_at" nullable="true" comment="Next Retry At"/>
+
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="outbox_id"/>
+        </constraint>
+
+        <index referenceId="BENTO_OUTBOX_STATUS_RETRY" indexType="btree">
+            <column name="status"/>
+            <column name="next_retry_at"/>
+        </index>
+        <index referenceId="BENTO_OUTBOX_EVENT_NAME" indexType="btree">
+            <column name="event_name"/>
+        </index>
+        <index referenceId="BENTO_OUTBOX_CREATED_AT" indexType="btree">
+            <column name="created_at"/>
+        </index>
+    </table>
+
+</schema>

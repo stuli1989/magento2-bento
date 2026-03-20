@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Message Queue Consumer Configuration
+ *
+ * Registers consumers for abandoned cart processing.
+ *
+ * Two consumers are defined:
+ * - artlounge.abandoned.cart.consumer: For RabbitMQ (AMQP)
+ * - artlounge.abandoned.cart.consumer.db: For DB queue fallback
+ *
+ * Run the appropriate consumer based on your queue configuration:
+ * - With RabbitMQ: bin/magento queue:consumers:start artlounge.abandoned.cart.consumer
+ * - Without RabbitMQ: bin/magento queue:consumers:start artlounge.abandoned.cart.consumer.db
+ *
+ * RECOMMENDATION: Use processing_method="cron" in admin configuration for
+ * abandoned carts, as queue-based processing doesn't support true delayed
+ * delivery without RabbitMQ delayed message plugin.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework-message-queue:etc/consumer.xsd">
+
+    <!-- Abandoned Cart Consumer (AMQP) - use with RabbitMQ -->
+    <consumer name="artlounge.abandoned.cart.consumer"
+              queue="artlounge.abandoned.cart"
+              handler="ArtLounge\BentoEvents\Model\AbandonedCart\Consumer::process"
+              consumerInstance="Magento\Framework\MessageQueue\Consumer"
+              connection="amqp"
+              maxMessages="1000"/>
+
+    <!-- Abandoned Cart Consumer (DB) - use without RabbitMQ -->
+    <consumer name="artlounge.abandoned.cart.consumer.db"
+              queue="artlounge.abandoned.cart.db"
+              handler="ArtLounge\BentoEvents\Model\AbandonedCart\Consumer::process"
+              consumerInstance="Magento\Framework\MessageQueue\Consumer"
+              connection="db"
+              maxMessages="100"/>
+
+</config>

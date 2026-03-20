@@ -1,0 +1,422 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Admin System Configuration
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <!-- Create ArtLounge Tab -->
+        <tab id="artlounge" translate="label" sortOrder="400">
+            <label>ArtLounge</label>
+        </tab>
+
+        <!-- Bento Integration Section -->
+        <section id="artlounge_bento" translate="label" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+            <label>Bento Integration</label>
+            <tab>artlounge</tab>
+            <resource>ArtLounge_BentoCore::config</resource>
+
+            <!-- General Settings Group -->
+            <group id="general" translate="label" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>General Settings</label>
+
+                <field id="enabled" translate="label comment" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Integration</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Master switch for all Bento integration features</comment>
+                </field>
+
+                <field id="site_uuid" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Site UUID</label>
+                    <comment>Found in Bento Settings > Site Settings</comment>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="publishable_key" translate="label comment" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Publishable Key</label>
+                    <comment>API key for client-side tracking (safe for frontend)</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="secret_key" translate="label comment" type="obscure" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Secret Key</label>
+                    <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
+                    <comment>API key for server-side events (encrypted in database)</comment>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="source" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Source Identifier</label>
+                    <comment>Identifier for your store (e.g., artlounge)</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="debug" translate="label comment" type="select" sortOrder="60" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Debug Mode</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Enable verbose logging to var/log/bento.log</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="test_connection" translate="label" type="button" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Test Connection</label>
+                    <frontend_model>ArtLounge\BentoCore\Block\Adminhtml\System\Config\TestConnection</frontend_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+            </group>
+
+            <!-- Order Events Group -->
+            <group id="orders" translate="label" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Order Events</label>
+                <depends>
+                    <field id="artlounge_bento/general/enabled">1</field>
+                </depends>
+
+                <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Order Events</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+
+                <field id="track_placed" translate="label comment" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Track Order Placed</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Send $purchase event when order is placed</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="track_shipped" translate="label comment" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Track Order Shipped</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Send $OrderShipped event when shipment created</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="track_cancelled" translate="label comment" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Track Order Cancelled</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Send $OrderCanceled event</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="track_refunded" translate="label comment" type="select" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Track Order Refunded</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Send $OrderRefunded event</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="include_tax" translate="label" type="select" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Include Tax in Totals</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="currency_multiplier" translate="label comment" type="text" sortOrder="70" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Currency Multiplier</label>
+                    <comment>100 = convert to cents, 1 = keep whole units</comment>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="include_images" translate="label" type="select" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Include Product Images</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="include_categories" translate="label" type="select" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Include Categories</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+            </group>
+
+            <!-- Customer Events Group -->
+            <group id="customers" translate="label" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Customer Events</label>
+                <depends>
+                    <field id="artlounge_bento/general/enabled">1</field>
+                </depends>
+
+                <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Customer Events</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+
+                <field id="track_created" translate="label comment" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Track Customer Registration</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Send $Subscriber event on registration</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="track_updated" translate="label comment" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Track Customer Updates</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Send $CustomerUpdated on profile changes</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="default_tags" translate="label comment" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Default Tags</label>
+                    <comment>Comma-separated tags for new subscribers (e.g., lead,mql)</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="include_address" translate="label" type="select" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Include Address</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+            </group>
+
+            <!-- Newsletter Events Group -->
+            <group id="newsletter" translate="label" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Newsletter Events</label>
+                <depends>
+                    <field id="artlounge_bento/general/enabled">1</field>
+                </depends>
+
+                <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Newsletter Events</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+
+                <field id="track_subscribe" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Track Subscribe</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="track_unsubscribe" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Track Unsubscribe</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="subscribe_tags" translate="label comment" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Subscribe Tags</label>
+                    <comment>Tags added when subscribing (e.g., newsletter)</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+            </group>
+
+            <!-- Abandoned Cart Group -->
+            <group id="abandoned_cart" translate="label" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Abandoned Cart</label>
+                <depends>
+                    <field id="artlounge_bento/general/enabled">1</field>
+                </depends>
+
+                <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Abandoned Cart</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+
+                <field id="delay_minutes" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Delay (Minutes)</label>
+                    <comment>Wait time before considering cart abandoned (default: 60)</comment>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="min_value" translate="label comment" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Minimum Cart Value</label>
+                    <comment>Only trigger for carts above this value</comment>
+                    <validate>validate-number validate-zero-or-greater</validate>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="require_email" translate="label comment" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Require Email</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Only trigger if customer email is known</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="exclude_groups" translate="label comment" type="multiselect" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Exclude Customer Groups</label>
+                    <source_model>Magento\Customer\Model\Config\Source\Group</source_model>
+                    <comment>Don't send abandoned cart for these groups</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="processing_method" translate="label comment" type="select" sortOrder="60" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Processing Method</label>
+                    <source_model>ArtLounge\BentoCore\Model\Config\Source\ProcessingMethod</source_model>
+                    <comment>Cron is recommended. Queue requires delayed-message infrastructure (e.g., RabbitMQ delayed plugin) to avoid early message drops.</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="include_recovery_url" translate="label" type="select" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Include Recovery URL</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="prevent_duplicates" translate="label comment" type="select" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Prevent Duplicates</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Only send one abandoned cart per quote</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="duplicate_window" translate="label comment" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Duplicate Window (Hours)</label>
+                    <comment>Suppress additional abandoned cart events for the same email/store within this window (default: 24)</comment>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <depends>
+                        <field id="enabled">1</field>
+                        <field id="prevent_duplicates">1</field>
+                    </depends>
+                </field>
+            </group>
+
+            <!-- Client-Side Tracking Group -->
+            <group id="tracking" translate="label" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Client-Side Tracking</label>
+                <depends>
+                    <field id="artlounge_bento/general/enabled">1</field>
+                </depends>
+
+                <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Tracking</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+
+                <field id="track_views" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Track Product Views</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="track_add_to_cart" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Track Add to Cart</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="track_checkout" translate="label" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Track Checkout Started</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="add_to_cart_selector" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Add to Cart Selector</label>
+                    <comment>CSS selector for add to cart button</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="include_brand" translate="label comment" type="select" sortOrder="55" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Include Product Brand</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Include configured brand attribute in product payloads for segmentation</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+            </group>
+
+            <!-- Advanced Settings Group -->
+            <group id="advanced" translate="label" sortOrder="70" showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Advanced Settings</label>
+                <depends>
+                    <field id="artlounge_bento/general/enabled">1</field>
+                </depends>
+
+                <field id="max_retries" translate="label comment" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Max Retry Attempts</label>
+                    <comment>Maximum retries before dead-lettering (1-10)</comment>
+                    <validate>validate-digits validate-digits-range digits-range-1-10</validate>
+                </field>
+
+                <field id="log_retention" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Log Retention (Days)</label>
+                    <comment>How long to keep event logs</comment>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                </field>
+
+                <field id="elasticsearch" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Enable Elasticsearch Indexing</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+
+                <field id="timeout" translate="label comment" type="text" sortOrder="40" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Request Timeout (Seconds)</label>
+                    <comment>HTTP timeout for Bento API requests</comment>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                </field>
+            </group>
+
+        </section>
+    </system>
+</config>

@@ -1,0 +1,185 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <!-- Inject Bento Logger -->
+    <type name="ArtLounge\BentoEvents\Service\OrderService">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <type name="ArtLounge\BentoEvents\Service\CustomerService">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <type name="ArtLounge\BentoEvents\Service\AbandonedCartService">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <type name="ArtLounge\BentoEvents\Model\AbandonedCart\Scheduler">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <type name="ArtLounge\BentoEvents\Model\AbandonedCart\Consumer">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <type name="ArtLounge\BentoEvents\Model\AbandonedCart\Checker">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <!-- Bento Notifier for Async Events -->
+    <type name="ArtLounge\BentoEvents\Model\BentoNotifier">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <!-- Register Bento Notifier with Aligent Async Events NotifierFactory -->
+    <type name="Aligent\AsyncEvents\Service\AsyncEvent\NotifierFactory">
+        <arguments>
+            <argument name="notifierClasses" xsi:type="array">
+                <item name="bento" xsi:type="object">ArtLounge\BentoEvents\Model\BentoNotifier</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Observer Loggers -->
+    <type name="ArtLounge\BentoEvents\Observer\Sales\OrderPlaced">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Observer\Sales\OrderShipped">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Observer\Sales\OrderRefunded">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Observer\Sales\OrderStatusChanged">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Observer\Customer\CustomerCreated">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Observer\Customer\CustomerUpdated">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Observer\Newsletter\SubscriberChanged">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Observer\Quote\QuoteSaved">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <!-- Outbox -->
+    <type name="ArtLounge\BentoEvents\Model\Outbox\Writer">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Model\Outbox\Processor">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <!-- Dead-Letter Monitor -->
+    <type name="ArtLounge\BentoEvents\Model\DeadLetter\Monitor">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <!-- Cron + Controller Loggers -->
+    <type name="ArtLounge\BentoEvents\Cron\ProcessAbandonedCarts">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Cron\OutboxReplay">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Cron\OutboxCleanup">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Cron\DeadLetterMonitor">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Controller\Cart\Recover">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <!-- Setup Patch Logger -->
+    <type name="ArtLounge\BentoEvents\Setup\Patch\Data\CreateBentoSubscriptions">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <!-- Admin Grid Data Provider -->
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="artlounge_bento_abandoned_cart_listing_data_source" xsi:type="string">ArtLounge\BentoEvents\Model\ResourceModel\AbandonedCartSchedule\Grid\Collection</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <virtualType name="ArtLounge\BentoEvents\Model\ResourceModel\AbandonedCartSchedule\Grid\Collection"
+                 type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
+        <arguments>
+            <argument name="mainTable" xsi:type="string">artlounge_bento_abandoned_cart_schedule</argument>
+            <argument name="resourceModel" xsi:type="string">ArtLounge\BentoEvents\Model\ResourceModel\AbandonedCartSchedule</argument>
+        </arguments>
+    </virtualType>
+
+    <!-- CLI Commands -->
+    <type name="Magento\Framework\Console\CommandListInterface">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="bento_test" xsi:type="object">ArtLounge\BentoEvents\Console\Command\TestConnectionCommand</item>
+                <item name="bento_status" xsi:type="object">ArtLounge\BentoEvents\Console\Command\StatusCommand</item>
+                <item name="bento_abandoned_cart_process" xsi:type="object">ArtLounge\BentoEvents\Console\Command\ProcessAbandonedCartsCommand</item>
+                <item name="bento_abandoned_cart_cleanup" xsi:type="object">ArtLounge\BentoEvents\Console\Command\CleanupAbandonedCartsCommand</item>
+                <item name="bento_outbox_process" xsi:type="object">ArtLounge\BentoEvents\Console\Command\ProcessOutboxCommand</item>
+                <item name="bento_outbox_status" xsi:type="object">ArtLounge\BentoEvents\Console\Command\OutboxStatusCommand</item>
+                <item name="bento_deadletter_replay" xsi:type="object">ArtLounge\BentoEvents\Console\Command\ReplayDeadLetterCommand</item>
+            </argument>
+        </arguments>
+    </type>
+
+</config>

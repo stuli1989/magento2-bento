@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Message Queue Communication Configuration
+ *
+ * Defines the topic for abandoned cart delayed processing.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Communication/etc/communication.xsd">
+
+    <!-- Abandoned Cart Delayed Check Topic -->
+    <topic name="artlounge.abandoned.cart"
+           request="string"/>
+
+</config>

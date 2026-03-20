@@ -1,0 +1,246 @@
+<?php
+/**
+ * Bento Tracking Script
+ *
+ * Injects the Bento tracking library on all pages and identifies logged-in users.
+ *
+ * VARNISH/FPC COMPATIBILITY:
+ * This template renders NO user-specific data in HTML. All user data (email, cart)
+ * is loaded via Magento's private content system (customerData), which makes AJAX
+ * requests to /customer/section/load/. This allows the HTML to be cached by Varnish
+ * while user-specific tracking happens client-side after page load.
+ *
+ * ANONYMOUS → IDENTIFIED ATTRIBUTION:
+ * Bento does NOT retroactively merge anonymous visitor events when bento.identify()
+ * is called. identify() is local-only (no server call). Events are attributed by
+ * email at send time. To handle anonymous→identified attribution:
+ * 1. bento.view() is deferred until after identification completes
+ * 2. Product views fired anonymously are saved to localStorage ('bento_pending_views')
+ *    and replayed with email after identification succeeds
+ *
+ * @var \Magento\Framework\View\Element\Template $block
+ * @var \ArtLounge\BentoTracking\ViewModel\TrackingData $viewModel
+ */
+
+$viewModel = $block->getData('view_model');
+
+if (!$viewModel->isEnabled()) {
+    return;
+}
+
+$publishableKey = $viewModel->getPublishableKey();
+$siteUuid = $viewModel->getSiteUuid();
+
+if (!$publishableKey || !$siteUuid) {
+    return;
+}
+?>
+<!-- Bento Tracking Script -->
+<?php ob_start(); ?>
+window.bentoDebug = <?= $viewModel->isDebugEnabled() ? 'true' : 'false' ?>;
+(function(w, d, s, id) {
+    if (w.bento) return;
+    var js, fjs = d.getElementsByTagName(s)[0];
+    js = d.createElement(s);
+    js.id = id;
+    js.async = true;
+    js.src = 'https://app.bentonow.com/<?= $block->escapeJs($siteUuid) ?>.js';
+    fjs.parentNode.insertBefore(js, fjs);
+})(window, document, 'script', 'bento-js');
+<?php $bentoLoaderScript = trim((string)ob_get_clean()); ?>
+<?= /* @noEscape */ $secureRenderer->renderTag('script', [], $bentoLoaderScript, false) ?>
+
+<!--
+    Bento User Identification
+
+    VARNISH SAFE: This script uses Magento's customerData (private content) which
+    loads user-specific data via AJAX, not from cached HTML. The flow is:
+    1. Varnish serves cached HTML (no user data in it)
+    2. This JS runs and calls customerData.get('bento-identity') / customerData.get('cart')
+    3. Magento makes AJAX call to /customer/section/load/
+    4. Response contains user email (if logged in) or cart email (if entered at checkout)
+    5. We call bento.identify() with the email
+    6. bento.view() fires AFTER identify so the pageview is attributed
+    7. Any queued anonymous product views are replayed with identity attached
+-->
+<?php ob_start(); ?>
+require(['jquery', 'Magento_Customer/js/customer-data', 'domReady!'], function($, customerData) {
+    'use strict';
+
+    var bentoIdentified = false;
+
+    /**
+     * Identify user with Bento SDK
+     * @param {string} email
+     * @param {string} source - Where the email came from (customer/cart)
+     */
+    function identifyAndSync(email, source) {
+        if (bentoIdentified) return;
+
+        try {
+            bento.identify(email);
+            bentoIdentified = true;
+            window._bentoIdentifyDone = true;
+            window.bentoDebug && console.debug('[Bento] User identified from', source + ':', email);
+
+            // Fire deferred pageview now that identity is set
+            if (!window._bentoPageviewDone && !window._bentoProductTrackingDone) {
+                bento.view();
+                window._bentoPageviewDone = true;
+            }
+
+            // Replay any anonymous product views that were queued before identification
+            replayPendingViews();
+        } catch (e) {
+            console.error('[Bento] Failed to identify user:', e);
+        }
+    }
+
+    /**
+     * Replay anonymous product views saved in localStorage.
+     * These were tracked without email; now re-send with identity attached.
+     */
+    function replayPendingViews() {
+        try {
+            var pending = localStorage.getItem('bento_pending_views');
+            if (!pending) return;
+            var views = JSON.parse(pending);
+            if (!Array.isArray(views) || views.length === 0) return;
+
+            views.forEach(function(viewData) {
+                bento.track('$view', viewData);
+                window.bentoDebug && console.debug('[Bento] Replayed pending view:', viewData.name);
+            });
+            localStorage.removeItem('bento_pending_views');
+        } catch (e) {
+            window.bentoDebug && console.debug('[Bento] Failed to replay pending views:', e);
+        }
+    }
+
+    /**
+     * Set up identification listeners using Magento's private content system
+     * Private content is loaded via AJAX, making this Varnish-safe
+     */
+    function setupIdentification() {
+        if (typeof bento === 'undefined') return;
+
+        // customerData.get() returns a Knockout observable
+        // The data is loaded via AJAX from /customer/section/load/
+        // Note: Magento's 'customer' section does NOT include email — we use
+        // our custom 'bento-identity' section which provides it securely
+        var bentoIdentity = customerData.get('bento-identity');
+        var cart = customerData.get('cart');
+
+        // Listen for bento-identity data (logged-in users — provides email)
+        bentoIdentity.subscribe(function(data) {
+            if (!bentoIdentified && data && data.email) {
+                identifyAndSync(data.email, 'customer account');
+            }
+        });
+
+        // Listen for cart data (guest email from checkout)
+        cart.subscribe(function(data) {
+            if (!bentoIdentified && data && data.customer_email) {
+                identifyAndSync(data.customer_email, 'cart/checkout');
+            }
+        });
+
+        // If bento-identity section is empty (first load or never fetched),
+        // explicitly fetch it via AJAX. We use jQuery from the require() scope
+        // to avoid conflict with Bento SDK's bundled jQuery.
+        var currentData = bentoIdentity();
+        if (!currentData || !currentData.email) {
+            $.ajax({
+                url: '/customer/section/load/',
+                data: { sections: 'bento-identity', force_new_section_timestamp: true, _: Date.now() },
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if (response && response['bento-identity'] && response['bento-identity'].email) {
+                        identifyAndSync(response['bento-identity'].email, 'customer account');
+                    } else {
+                        // No logged-in user — signal that identification attempt is complete
+                        window._bentoIdentifyDone = true;
+                        // Fire deferred pageview for anonymous users
+                        if (!window._bentoPageviewDone && !window._bentoProductTrackingDone) {
+                            bento.view();
+                            window._bentoPageviewDone = true;
+                        }
+                    }
+                },
+                error: function() {
+                    window._bentoIdentifyDone = true;
+                    // Fire deferred pageview on error
+                    if (!window._bentoPageviewDone && !window._bentoProductTrackingDone) {
+                        bento.view();
+                        window._bentoPageviewDone = true;
+                    }
+                }
+            });
+        } else {
+            // Trigger subscribers with current value
+            bentoIdentity.valueHasMutated();
+        }
+        cart.valueHasMutated();
+    }
+
+    /**
+     * Initialize Bento tracking after library loads
+     */
+    function initBento() {
+        if (window._bentoInitDone) return;
+        window._bentoInitDone = true;
+
+        window.bentoDebug && console.debug('[Bento] SDK loaded, setting up identification');
+
+        // Re-identify from localStorage before any tracking calls.
+        // identify() via AJAX hasn't run yet, but bento_identity persists
+        // from previous sessions. This ensures bento.view() and all subsequent
+        // track() calls include the email in the payload.
+        try {
+            var storedEmail = localStorage.getItem('bento_identity');
+            if (storedEmail && !bento.getEmail()) {
+                bento.identify(storedEmail);
+                bentoIdentified = true;
+                window._bentoIdentifyDone = true;
+                window.bentoDebug && console.debug('[Bento] Pre-identified from localStorage:', storedEmail);
+                // Fire pageview immediately — identity is set
+                if (!window._bentoProductTrackingDone) {
+                    bento.view();
+                    window._bentoPageviewDone = true;
+                }
+            }
+            // If the user just opted in via newsletter form, fire the optin event
+            // to promote the visitor to a subscriber in Bento.
+            if (localStorage.getItem('bento_newsletter_optin') === '1') {
+                localStorage.removeItem('bento_newsletter_optin');
+                bento.track('optin', { source: 'footer_newsletter' });
+                window.bentoDebug && console.debug('[Bento] Newsletter optin event sent');
+            }
+        } catch (e) {}
+
+        // Set up user identification FIRST — bento.view() is deferred until after
+        // identification completes so the pageview includes the email identity.
+        // For product pages, product_tracking.phtml handles its own $view.
+        setupIdentification();
+    }
+
+    // Wait for Bento to load, then initialize
+    // Use window-level flag to prevent duplicate execution from MagePack/RequireJS rebundling
+    if (window._bentoBootstrapDone) return;
+    window._bentoBootstrapDone = true;
+
+    var checkBento = setInterval(function() {
+        if (typeof bento !== 'undefined') {
+            clearInterval(checkBento);
+            initBento();
+        }
+    }, 100);
+
+    // Timeout after 10 seconds
+    setTimeout(function() {
+        clearInterval(checkBento);
+    }, 10000);
+});
+<?php $bentoBootstrapScript = trim((string)ob_get_clean()); ?>
+<?= /* @noEscape */ $secureRenderer->renderTag('script', [], $bentoBootstrapScript, false) ?>

@@ -1,0 +1,60 @@
+<?php
+/**
+ * Test Connection Button Template
+ *
+ * @var \ArtLounge\BentoCore\Block\Adminhtml\System\Config\TestConnection $block
+ */
+?>
+<div id="bento_connection_result" style="display:none; margin-top: 10px;">
+    <div id="bento_connection_success" class="message message-success" style="display:none;"></div>
+    <div id="bento_connection_error" class="message message-error" style="display:none;"></div>
+</div>
+
+<?= $block->getButtonHtml() ?>
+
+<script type="text/javascript">
+    require(['jquery', 'Magento_Ui/js/modal/alert', 'mage/translate'], function($, alert) {
+        $('#bento_test_connection').on('click', function(e) {
+            e.preventDefault();
+            var $button = $(this);
+            var $result = $('#bento_connection_result');
+            var $success = $('#bento_connection_success');
+            var $error = $('#bento_connection_error');
+
+            // Reset state
+            $button.prop('disabled', true);
+            $button.text($.mage.__('Testing...'));
+            $result.hide();
+            $success.hide().text('');
+            $error.hide().text('');
+
+            $.ajax({
+                url: '<?= $block->escapeUrl($block->getAjaxUrl()) ?>',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    form_key: window.FORM_KEY
+                },
+                success: function(response) {
+                    $result.show();
+                    if (response.success) {
+                        $success.text(response.message).show();
+                        if (response.response_time_ms) {
+                            $success.append(' (Response time: ' + response.response_time_ms + 'ms)');
+                        }
+                    } else {
+                        $error.text(response.message).show();
+                    }
+                },
+                error: function(xhr, status, error) {
+                    $result.show();
+                    $error.text($.mage.__('An error occurred while testing the connection.')).show();
+                },
+                complete: function() {
+                    $button.prop('disabled', false);
+                    $button.text($.mage.__('Test Connection'));
+                }
+            });
+        });
+    });
+</script>

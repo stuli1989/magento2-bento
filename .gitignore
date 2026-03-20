@@ -1,0 +1,7 @@
+/vendor/
+/build/
+/docs/internal/
+/.claude/
+/.cursor/
+.phpunit.result.cache
+composer.lock

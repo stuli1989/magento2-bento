@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Customer/etc/sections.xsd">
+    <!-- Invalidate bento-identity on login/logout so email is refreshed -->
+    <action name="customer/account/loginPost">
+        <section name="bento-identity"/>
+    </action>
+    <action name="customer/account/logout">
+        <section name="bento-identity"/>
+    </action>
+    <action name="customer/account/createPost">
+        <section name="bento-identity"/>
+    </action>
+    <!-- Invalidate on cart actions so quote_id is available for cart lifecycle -->
+    <action name="checkout/cart/add">
+        <section name="bento-identity"/>
+    </action>
+</config>

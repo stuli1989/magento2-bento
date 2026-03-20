@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+        <add id="ArtLounge_BentoEvents::bento"
+             title="Bento"
+             module="ArtLounge_BentoEvents"
+             sortOrder="60"
+             resource="ArtLounge_BentoEvents::abandoned_cart"/>
+
+        <add id="ArtLounge_BentoEvents::abandoned_cart"
+             title="Abandoned Cart Schedule"
+             module="ArtLounge_BentoEvents"
+             sortOrder="10"
+             parent="ArtLounge_BentoEvents::bento"
+             action="artlounge_bento/abandonedcart/index"
+             resource="ArtLounge_BentoEvents::abandoned_cart"/>
+    </menu>
+</config>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    bootstrap="tests/bootstrap.php"
+    colors="true"
+    stopOnFailure="false"
+    failOnRisky="true"
+    failOnWarning="true"
+>
+    <testsuites>
+        <testsuite name="ArtLounge Bento Unit Tests">
+            <directory>modules/ArtLounge/BentoCore/Test/Unit</directory>
+            <directory>modules/ArtLounge/BentoEvents/Test/Unit</directory>
+            <directory>modules/ArtLounge/BentoTracking/Test/Unit</directory>
+        </testsuite>
+        <testsuite name="ArtLounge Bento Integration Tests">
+            <directory>modules/ArtLounge/BentoCore/Test/Integration</directory>
+            <directory>modules/ArtLounge/BentoEvents/Test/Integration</directory>
+        </testsuite>
+    </testsuites>
+
+    <coverage processUncoveredFiles="true">
+        <include>
+            <directory suffix=".php">modules/ArtLounge/BentoCore</directory>
+            <directory suffix=".php">modules/ArtLounge/BentoEvents</directory>
+            <directory suffix=".php">modules/ArtLounge/BentoTracking</directory>
+        </include>
+        <report>
+            <text outputFile="php://stdout" showOnlySummary="false"/>
+            <html outputDirectory="build/coverage"/>
+        </report>
+    </coverage>
+
+    <php>
+        <ini name="error_reporting" value="-1"/>
+    </php>
+</phpunit>

@@ -1,0 +1,200 @@
+<?php
+/**
+ * Purchase Tracking Template
+ *
+ * Primary client-side $purchase event on checkout success page.
+ * Fires immediately via Bento SDK and typically wins the dedup race
+ * against the server-side event (which arrives later via queue).
+ * Carries the full rich payload (matching server-side OrderService)
+ * so Bento's Sales tab, Liquid templates, and flows have all data.
+ *
+ * DEDUPLICATION:
+ * Uses order increment_id as unique key (same as server-side).
+ * If Bento receives both client-side and server-side events with
+ * the same unique key, it will deduplicate automatically.
+ *
+ * NOT VARNISH CACHED:
+ * The checkout success page is not cached (session-dependent,
+ * shown once per order) so it's safe to render order data server-side.
+ *
+ * @var \Magento\Framework\View\Element\Template $block
+ * @var \ArtLounge\BentoTracking\ViewModel\TrackingData $viewModel
+ */
+
+$viewModel = $block->getData('view_model');
+
+if (!$viewModel->isEnabled() || !$viewModel->isPurchaseTrackingEnabled()) {
+    return;
+}
+
+$order = $viewModel->getLastOrder();
+if (!$order) {
+    return;
+}
+
+$orderDataJson = $viewModel->getLastOrderDataJson();
+?>
+<?php ob_start(); ?>
+require(['jquery', 'domReady!'], function($) {
+    'use strict';
+
+    // MagePack guard: prevent duplicate execution from RequireJS rebundling
+    if (window._bentoPurchaseTrackingDone) return;
+    window._bentoPurchaseTrackingDone = true;
+
+    var purchaseTracked = false;
+    var STORAGE_KEY = 'bento_purchase_tracked';
+
+    /**
+     * Check if this order was already tracked (prevents duplicate on refresh)
+     */
+    function isAlreadyTracked(orderId) {
+        try {
+            var tracked = sessionStorage.getItem(STORAGE_KEY);
+            if (tracked) {
+                var data = JSON.parse(tracked);
+                // Already tracked this order in this session
+                if (data.orderId === orderId) {
+                    return true;
+                }
+            }
+        } catch (e) {
+            // sessionStorage not available
+        }
+        return false;
+    }
+
+    function markAsTracked(orderId) {
+        try {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+                orderId: orderId,
+                timestamp: Date.now()
+            }));
+        } catch (e) {
+            // sessionStorage not available
+        }
+    }
+
+    // Wait for Bento to load
+    var checkBento = setInterval(function() {
+        if (typeof bento !== 'undefined') {
+            clearInterval(checkBento);
+            trackPurchase();
+        }
+    }, 100);
+
+    // Timeout after 10 seconds
+    setTimeout(function() {
+        clearInterval(checkBento);
+    }, 10000);
+
+    function trackPurchase() {
+        if (purchaseTracked) return;
+
+        try {
+            var orderData = <?= /* @noEscape */ $orderDataJson ?>;
+
+            if (!orderData || !orderData.increment_id) {
+                window.bentoDebug && console.debug('[Bento] No order data available for purchase tracking');
+                return;
+            }
+
+            // Check if already tracked (page refresh)
+            if (isAlreadyTracked(orderData.increment_id)) {
+                window.bentoDebug && console.debug('[Bento] Purchase already tracked for order:', orderData.increment_id);
+                purchaseTracked = true;
+                return;
+            }
+
+            // Identify user with email from order
+            if (orderData.email) {
+                bento.identify(orderData.email);
+            }
+
+            // Build purchase event data — this becomes the `details` object in Bento
+            // orderData is the rich payload from TrackingData::getLastOrderDataJson()
+            // matching server-side OrderService structure (addresses, payment, flags, etc.)
+            //
+            // Items already have canonical Bento Sales keys (product_name, product_sku, quantity)
+            // plus short aliases (name, sku, qty) from the PHP ViewModel.
+            // Explicit Number() coercion ensures correct types regardless of SDK serialization.
+            var items = (orderData.items || []).map(function(item) {
+                var unitPrice = Number(item.price) || 0;
+                var mapped = {
+                    // Canonical keys for Bento Sales tab parser (matches Node SDK PurchaseItem type)
+                    item_id: Number(item.item_id) || 0,
+                    product_id: String(item.product_id || ''),
+                    product_sku: String(item.product_sku || item.sku || ''),
+                    product_name: String(item.product_name || item.name || ''),
+                    product_price: unitPrice,
+                    product_permalink: String(item.url || item.product_url || ''),
+                    quantity: Number(item.quantity || item.qty) || 0,
+                    // Short aliases for Liquid templates
+                    sku: String(item.sku || ''),
+                    name: String(item.name || ''),
+                    qty: Number(item.qty) || 0,
+                    price: unitPrice,
+                    row_total: Number(item.row_total) || 0,
+                    url: String(item.url || item.product_url || ''),
+                    image_url: String(item.image_url || item.product_image_url || '')
+                };
+                if (item.brand) mapped.brand = String(item.brand);
+                if (item.categories) mapped.categories = item.categories;
+                return mapped;
+            });
+
+            // Build the full purchase payload — mirrors server-side OrderService structure
+            var purchaseData = {
+                // SDK-recognized keys
+                unique: { key: String(orderData.increment_id) },
+                value: {
+                    currency: String(orderData.currency_code || 'INR'),
+                    amount: Number(orderData.total) || 0
+                },
+                cart: { items: items },
+
+                // Order identification (flat for backward compat)
+                order_id: Number(orderData.order_id) || 0,
+                increment_id: String(orderData.increment_id),
+                increment_id_display: String(orderData.increment_id_display || ''),
+                cart_id: orderData.cart_id ? Number(orderData.cart_id) : undefined,
+
+                // Rich nested order data (matches server-side)
+                order: orderData.order || undefined,
+                financials: orderData.financials || undefined,
+                flags: orderData.flags || undefined,
+                summary: orderData.summary || undefined,
+                customer: orderData.customer || undefined,
+                addresses: orderData.addresses || undefined,
+                payment: orderData.payment || undefined,
+                shipping_method: orderData.shipping_method || undefined,
+                store: orderData.store || undefined,
+
+                // Flat financial aliases
+                subtotal: Number(orderData.subtotal) || 0,
+                tax: Number(orderData.tax) || 0,
+                shipping: Number(orderData.shipping) || 0,
+                discount: Number(orderData.discount) || 0,
+                item_count: items.length,
+                source: 'client'
+            };
+
+            // Track the purchase — must use '$purchase' to match server-side event name
+            // so Bento can deduplicate on unique.key (increment_id) when both fire
+            bento.track('$purchase', purchaseData);
+
+            purchaseTracked = true;
+            markAsTracked(orderData.increment_id);
+
+            // Reset cart lifecycle — next ATC starts a new $cart_created
+            try { localStorage.removeItem('bento_cart_created'); } catch(e) {}
+
+            window.bentoDebug && console.debug('[Bento] Purchase tracked (client fallback):', orderData.increment_id_display);
+
+        } catch (e) {
+            console.error('[Bento] Failed to track purchase:', e);
+        }
+    }
+});
+<?php $purchaseTrackingScript = trim((string)ob_get_clean()); ?>
+<?= /* @noEscape */ $secureRenderer->renderTag('script', [], $purchaseTrackingScript, false) ?>

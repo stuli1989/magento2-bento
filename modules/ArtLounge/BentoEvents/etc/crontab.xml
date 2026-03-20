@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Cron Configuration
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="default">
+        <!-- Process abandoned carts every 5 minutes -->
+        <job name="artlounge_bento_process_abandoned_carts"
+             instance="ArtLounge\BentoEvents\Cron\ProcessAbandonedCarts"
+             method="execute">
+            <schedule>*/5 * * * *</schedule>
+        </job>
+
+        <!-- Replay pending outbox entries every 2 minutes -->
+        <job name="artlounge_bento_outbox_replay"
+             instance="ArtLounge\BentoEvents\Cron\OutboxReplay"
+             method="execute">
+            <schedule>*/2 * * * *</schedule>
+        </job>
+
+        <!-- Cleanup old outbox entries daily at 3 AM -->
+        <job name="artlounge_bento_outbox_cleanup"
+             instance="ArtLounge\BentoEvents\Cron\OutboxCleanup"
+             method="execute">
+            <schedule>0 3 * * *</schedule>
+        </job>
+
+        <!-- Monitor dead-letter queue depth every 5 minutes -->
+        <job name="artlounge_bento_deadletter_monitor"
+             instance="ArtLounge\BentoEvents\Cron\DeadLetterMonitor"
+             method="execute">
+            <schedule>*/5 * * * *</schedule>
+        </job>
+    </group>
+</config>

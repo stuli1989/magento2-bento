@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Async Events Configuration
+ *
+ * Registers all Bento events with the Aligent Async Events framework.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Aligent_AsyncEvents:etc/async_events.xsd">
+
+    <!-- Order Events -->
+    <async_event name="bento.order.placed">
+        <service class="ArtLounge\BentoEvents\Service\OrderService" method="getOrderDataByIncrementId"/>
+    </async_event>
+
+    <async_event name="bento.order.shipped">
+        <service class="ArtLounge\BentoEvents\Service\ShipmentService" method="getShipmentData"/>
+    </async_event>
+
+    <async_event name="bento.order.cancelled">
+        <service class="ArtLounge\BentoEvents\Service\OrderService" method="getOrderData"/>
+    </async_event>
+
+    <async_event name="bento.order.refunded">
+        <service class="ArtLounge\BentoEvents\Service\RefundService" method="getRefundData"/>
+    </async_event>
+
+    <!-- Customer Events -->
+    <async_event name="bento.customer.created">
+        <service class="ArtLounge\BentoEvents\Service\CustomerService" method="getCustomerData"/>
+    </async_event>
+
+    <async_event name="bento.customer.updated">
+        <service class="ArtLounge\BentoEvents\Service\CustomerService" method="getCustomerData"/>
+    </async_event>
+
+    <!-- Newsletter Events -->
+    <async_event name="bento.newsletter.subscribed">
+        <service class="ArtLounge\BentoEvents\Service\NewsletterService" method="getSubscriberData"/>
+    </async_event>
+
+    <async_event name="bento.newsletter.unsubscribed">
+        <service class="ArtLounge\BentoEvents\Service\NewsletterService" method="getSubscriberData"/>
+    </async_event>
+
+    <!-- Abandoned Cart Events -->
+    <async_event name="bento.cart.abandoned">
+        <service class="ArtLounge\BentoEvents\Service\AbandonedCartService" method="getAbandonedCartData"/>
+    </async_event>
+
+</config>

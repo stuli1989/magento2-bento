@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Message Queue Declaration (DB Queue)
+ *
+ * Declares the DB queue for abandoned cart processing.
+ * Used when RabbitMQ is not available.
+ *
+ * NOTE: The consumer name must match the one defined in queue_consumer.xml
+ * for the DB connection (artlounge.abandoned.cart.consumer.db).
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework-message-queue:etc/queue.xsd">
+
+    <!-- Abandoned Cart Queue Declaration (DB) -->
+    <broker topic="artlounge.abandoned.cart" type="db">
+        <queue name="artlounge.abandoned.cart.db"
+               consumer="artlounge.abandoned.cart.consumer.db"
+               consumerInstance="Magento\Framework\MessageQueue\Consumer"
+               handler="ArtLounge\BentoEvents\Model\AbandonedCart\Consumer::process"/>
+    </broker>
+
+</config>

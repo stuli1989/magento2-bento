@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">artlounge_bento_abandoned_cart_listing.artlounge_bento_abandoned_cart_listing_data_source</item>
+        </item>
+    </argument>
+
+    <settings>
+        <spinner>artlounge_bento_abandoned_cart_columns</spinner>
+        <deps>
+            <dep>artlounge_bento_abandoned_cart_listing.artlounge_bento_abandoned_cart_listing_data_source</dep>
+        </deps>
+    </settings>
+
+    <dataSource name="artlounge_bento_abandoned_cart_listing_data_source" component="Magento_Ui/js/grid/provider">
+        <settings>
+            <updateUrl path="mui/index/render"/>
+        </settings>
+        <aclResource>ArtLounge_BentoEvents::abandoned_cart</aclResource>
+        <dataProvider class="Magento\Framework\View\Element\UiComponent\DataProvider\DataProvider"
+                      name="artlounge_bento_abandoned_cart_listing_data_source">
+            <settings>
+                <requestFieldName>id</requestFieldName>
+                <primaryFieldName>schedule_id</primaryFieldName>
+            </settings>
+        </dataProvider>
+    </dataSource>
+
+    <listingToolbar name="listing_top">
+        <settings>
+            <sticky>true</sticky>
+        </settings>
+        <bookmark name="bookmarks"/>
+        <columnsControls name="columns_controls"/>
+        <filters name="listing_filters"/>
+        <paging name="listing_paging"/>
+        <massaction name="listing_massaction" component="Magento_Ui/js/grid/tree-massactions">
+            <action name="delete">
+                <settings>
+                    <confirm>
+                        <message translate="true">Are you sure you want to delete the selected schedule entries?</message>
+                        <title translate="true">Delete</title>
+                    </confirm>
+                    <url path="artlounge_bento/abandonedcart/massDelete"/>
+                    <type>delete</type>
+                    <label translate="true">Delete</label>
+                </settings>
+            </action>
+            <action name="reset">
+                <settings>
+                    <confirm>
+                        <message translate="true">Reset selected entries to pending status?</message>
+                        <title translate="true">Reset to Pending</title>
+                    </confirm>
+                    <url path="artlounge_bento/abandonedcart/massReset"/>
+                    <type>reset</type>
+                    <label translate="true">Reset to Pending</label>
+                </settings>
+            </action>
+        </massaction>
+    </listingToolbar>
+
+    <columns name="artlounge_bento_abandoned_cart_columns">
+        <selectionsColumn name="ids" sortOrder="0">
+            <settings>
+                <indexField>schedule_id</indexField>
+            </settings>
+        </selectionsColumn>
+
+        <column name="schedule_id" sortOrder="10">
+            <settings>
+                <filter>textRange</filter>
+                <label translate="true">ID</label>
+                <sorting>desc</sorting>
+            </settings>
+        </column>
+
+        <column name="quote_id" sortOrder="20">
+            <settings>
+                <filter>textRange</filter>
+                <label translate="true">Quote ID</label>
+            </settings>
+        </column>
+
+        <column name="store_id" sortOrder="30" class="Magento\Store\Ui\Component\Listing\Column\Store">
+            <settings>
+                <filter>select</filter>
+                <label translate="true">Store</label>
+                <dataType>text</dataType>
+            </settings>
+        </column>
+
+        <column name="customer_email" sortOrder="40">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Customer Email</label>
+            </settings>
+        </column>
+
+        <column name="grand_total" sortOrder="50" class="Magento\Sales\Ui\Component\Listing\Column\Price">
+            <settings>
+                <filter>textRange</filter>
+                <label translate="true">Grand Total</label>
+            </settings>
+        </column>
+
+        <column name="status" sortOrder="60">
+            <settings>
+                <filter>select</filter>
+                <label translate="true">Status</label>
+                <dataType>select</dataType>
+                <options>
+                    <option name="pending" xsi:type="array">
+                        <item name="value" xsi:type="string">pending</item>
+                        <item name="label" xsi:type="string" translate="true">Pending</item>
+                    </option>
+                    <option name="processing" xsi:type="array">
+                        <item name="value" xsi:type="string">processing</item>
+                        <item name="label" xsi:type="string" translate="true">Processing</item>
+                    </option>
+                    <option name="sent" xsi:type="array">
+                        <item name="value" xsi:type="string">sent</item>
+                        <item name="label" xsi:type="string" translate="true">Sent</item>
+                    </option>
+                    <option name="failed" xsi:type="array">
+                        <item name="value" xsi:type="string">failed</item>
+                        <item name="label" xsi:type="string" translate="true">Failed</item>
+                    </option>
+                    <option name="converted" xsi:type="array">
+                        <item name="value" xsi:type="string">converted</item>
+                        <item name="label" xsi:type="string" translate="true">Converted</item>
+                    </option>
+                    <option name="expired" xsi:type="array">
+                        <item name="value" xsi:type="string">expired</item>
+                        <item name="label" xsi:type="string" translate="true">Expired</item>
+                    </option>
+                </options>
+            </settings>
+        </column>
+
+        <column name="attempts" sortOrder="70">
+            <settings>
+                <filter>textRange</filter>
+                <label translate="true">Attempts</label>
+            </settings>
+        </column>
+
+        <column name="scheduled_at" class="Magento\Ui\Component\Listing\Columns\Date" component="Magento_Ui/js/grid/columns/date" sortOrder="80">
+            <settings>
+                <filter>dateRange</filter>
+                <dataType>date</dataType>
+                <label translate="true">Scheduled At</label>
+            </settings>
+        </column>
+
+        <column name="check_at" class="Magento\Ui\Component\Listing\Columns\Date" component="Magento_Ui/js/grid/columns/date" sortOrder="90">
+            <settings>
+                <filter>dateRange</filter>
+                <dataType>date</dataType>
+                <label translate="true">Check At</label>
+            </settings>
+        </column>
+
+        <column name="processed_at" class="Magento\Ui\Component\Listing\Columns\Date" component="Magento_Ui/js/grid/columns/date" sortOrder="100">
+            <settings>
+                <filter>dateRange</filter>
+                <dataType>date</dataType>
+                <label translate="true">Processed At</label>
+            </settings>
+        </column>
+
+        <column name="last_sent_at" class="Magento\Ui\Component\Listing\Columns\Date" component="Magento_Ui/js/grid/columns/date" sortOrder="110">
+            <settings>
+                <filter>dateRange</filter>
+                <dataType>date</dataType>
+                <label translate="true">Last Sent At</label>
+            </settings>
+        </column>
+    </columns>
+</listing>

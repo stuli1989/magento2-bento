@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Event Observers Configuration
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+
+    <!-- Order Events -->
+    <event name="sales_order_place_after">
+        <observer name="bento_order_placed" instance="ArtLounge\BentoEvents\Observer\Sales\OrderPlaced"/>
+    </event>
+
+    <event name="sales_order_shipment_save_after">
+        <observer name="bento_order_shipped" instance="ArtLounge\BentoEvents\Observer\Sales\OrderShipped"/>
+    </event>
+
+    <event name="sales_order_save_after">
+        <observer name="bento_order_status_changed" instance="ArtLounge\BentoEvents\Observer\Sales\OrderStatusChanged"/>
+    </event>
+
+    <event name="sales_order_creditmemo_save_after">
+        <observer name="bento_order_refunded" instance="ArtLounge\BentoEvents\Observer\Sales\OrderRefunded"/>
+    </event>
+
+    <!-- Customer Events -->
+    <event name="customer_register_success">
+        <observer name="bento_customer_created" instance="ArtLounge\BentoEvents\Observer\Customer\CustomerCreated"/>
+    </event>
+
+    <event name="customer_save_after_data_object">
+        <observer name="bento_customer_updated" instance="ArtLounge\BentoEvents\Observer\Customer\CustomerUpdated"/>
+    </event>
+
+    <!-- Newsletter Events -->
+    <event name="newsletter_subscriber_save_after">
+        <observer name="bento_newsletter_changed" instance="ArtLounge\BentoEvents\Observer\Newsletter\SubscriberChanged"/>
+    </event>
+
+    <!-- Quote/Cart Events -->
+    <event name="sales_quote_save_after">
+        <observer name="bento_quote_saved" instance="ArtLounge\BentoEvents\Observer\Quote\QuoteSaved"/>
+    </event>
+
+</config>

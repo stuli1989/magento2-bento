@@ -1,0 +1,356 @@
+<?php
+/**
+ * Product Tracking Template
+ *
+ * Tracks product views and add to cart events with deduplication.
+ *
+ * PRODUCT VIEWS:
+ * - Tracked via bento.track('$view') with rich product data
+ * - Waits for user identification (up to 3s) so events are attributed, not anonymous
+ * - Uses date-based unique: { key } format (product_id + YYYY-MM-DD) to prevent double-counting
+ * - Anonymous views are saved to localStorage for replay after identification
+ *
+ * ADD TO CART:
+ * - Debounced to prevent duplicate events from rapid clicks
+ * - Captures selected options for configurable products
+ *
+ * @var \Magento\Framework\View\Element\Template $block
+ * @var \ArtLounge\BentoTracking\ViewModel\TrackingData $viewModel
+ */
+
+$viewModel = $block->getData('view_model');
+
+if (!$viewModel->isEnabled()) {
+    return;
+}
+
+$product = $viewModel->getCurrentProduct();
+if (!$product) {
+    return;
+}
+
+$productDataJson = $viewModel->getProductDataJson();
+$trackViews = $viewModel->isProductViewEnabled();
+$trackAddToCart = $viewModel->isAddToCartEnabled();
+$addToCartSelector = $viewModel->getAddToCartSelector();
+?>
+<?php ob_start(); ?>
+require(['jquery', 'Magento_Customer/js/customer-data', 'domReady!'], function($, customerData) {
+    'use strict';
+
+    // Guard: prevent duplicate execution
+    if (window._bentoProductTrackingDone) return;
+    window._bentoProductTrackingDone = true;
+
+    var viewTracked = false;
+    var addToCartInProgress = false;
+    var CURRENCY_MULTIPLIER = <?= (int)$viewModel->getCurrencyMultiplier() ?>;
+
+    // Wait for Bento to load
+    var checkBento = setInterval(function() {
+        if (typeof bento !== 'undefined') {
+            clearInterval(checkBento);
+            initBentoTracking();
+        }
+    }, 100);
+
+    // Timeout after 10 seconds
+    setTimeout(function() {
+        clearInterval(checkBento);
+    }, 10000);
+
+    function initBentoTracking() {
+        var productData = <?= /* @noEscape */ $productDataJson ?>;
+
+        // Re-identify from localStorage before tracking so events are attributed.
+        // identify() is async (AJAX) and may not have run yet on this page load,
+        // but bento_identity persists from previous sessions.
+        try {
+            var storedEmail = localStorage.getItem('bento_identity');
+            if (storedEmail && !bento.getEmail()) {
+                bento.identify(storedEmail);
+            }
+        } catch (e) {}
+
+        <?php if ($trackViews): ?>
+        // Track product view (only once per page load)
+        // Waits for identification to complete so the event is attributed,
+        // with a 3s timeout fallback for anonymous visitors.
+        if (!viewTracked) {
+            var today = new Date().toISOString().split('T')[0];
+            var viewKey = String(productData.product_id) + '_' + today;
+
+            function sendProductView() {
+                if (viewTracked) return;
+                try {
+                    var viewPayload = Object.assign({}, productData, {
+                        unique: { key: viewKey }
+                    });
+                    bento.track('$view', viewPayload);
+                    viewTracked = true;
+                    window.bentoDebug && console.debug('[Bento] Product view tracked:', productData.name);
+
+                    // If anonymous (no email), save to pending queue for replay after identification
+                    if (!bento.getEmail()) {
+                        try {
+                            var pending = JSON.parse(localStorage.getItem('bento_pending_views') || '[]');
+                            // Avoid duplicates: don't add if same unique key already queued
+                            var alreadyQueued = pending.some(function(p) { return p.unique && p.unique.key === viewKey; });
+                            if (!alreadyQueued) {
+                                pending.push(viewPayload);
+                                localStorage.setItem('bento_pending_views', JSON.stringify(pending));
+                                window.bentoDebug && console.debug('[Bento] Queued anonymous view for replay:', productData.name);
+                            }
+                        } catch (e) {}
+                    }
+                } catch (e) {
+                    console.error('[Bento] Failed to track product view:', e);
+                }
+            }
+
+            // If user is already identified (localStorage pre-identify or previous page), track now
+            if (bento.getEmail() || window._bentoIdentifyDone) {
+                sendProductView();
+            } else {
+                // Wait for bento_script.phtml's identification AJAX to complete
+                var identifyWait = setInterval(function() {
+                    if (bento.getEmail() || window._bentoIdentifyDone) {
+                        clearInterval(identifyWait);
+                        sendProductView();
+                    }
+                }, 50);
+                // Timeout: don't block view tracking forever for anonymous visitors
+                setTimeout(function() {
+                    clearInterval(identifyWait);
+                    sendProductView();
+                }, 3000);
+            }
+        }
+        <?php endif; ?>
+
+        <?php if ($trackAddToCart): ?>
+        // --- Full-cart-snapshot ATC tracking ---
+        // Per Bento guidance: $cart_created/$cart_updated should send the ENTIRE cart
+        // (all items + totals), not just the item that changed. Bento's cart/abandoned-cart
+        // liquid helpers (visitor|current_cart, visitor|cart_table) need the latest full snapshot.
+        //
+        // Triggers:
+        // 1. ATC click → pendingAtc flag → cart section refresh → send $cart_created/$cart_updated
+        // 2. Minicart qty update / item remove → cart section refresh → detect diff → send $cart_updated
+        //
+        // Cart diffing prevents false positives from initial page-load hydration or
+        // non-meaningful section refreshes.
+
+        var pendingAtc = null;
+        var pendingAtcTimeout = null;
+        var cartSection = customerData.get('cart');
+        var bentoIdentity = customerData.get('bento-identity');
+        var lastCartFingerprint = null;
+        var cartInitialized = false;
+
+        /**
+         * Build a fingerprint string from cart data for change detection.
+         * Format: "productId:qty,productId:qty|totalQty" sorted by product_id.
+         */
+        function getCartFingerprint(cartData) {
+            var items = cartData.items || [];
+            if (!items.length) return '|0';
+            var parts = Array.prototype.slice.call(items).map(function(item) {
+                return String(item.product_id) + ':' + String(item.qty);
+            }).sort();
+            return parts.join(',') + '|' + String(cartData.summary_count || 0);
+        }
+
+        /**
+         * Get current quote_id from bento-identity section (set by BentoSection.php).
+         * Used as cart_id across all cart lifecycle events for Bento flow matching.
+         */
+        function getCartId() {
+            var identity = bentoIdentity();
+            return identity && identity.quote_id ? String(identity.quote_id) : null;
+        }
+
+        /**
+         * Build full cart payload from Magento's cart customer-data section.
+         * @param {Object} cartData - Magento cart section data
+         * @param {Object|null} triggerInfo - Info about what triggered this (ATC product or null for minicart)
+         * @returns {Object} Bento-formatted cart payload
+         */
+        function buildFullCartPayload(cartData, triggerInfo) {
+            // Bento Sales tab requires canonical keys: product_name, product_sku, quantity
+            // Also include short aliases (name, sku, qty) for Liquid templates
+            var items = Array.prototype.slice.call(cartData.items || []).map(function(item) {
+                var imgSrc = (item.product_image && item.product_image.src) ? item.product_image.src : '';
+                var unitPrice = Math.round(Number(item.product_price_value || 0) * CURRENCY_MULTIPLIER);
+                return {
+                    // Canonical keys for Bento Sales tab parser (matches Node SDK PurchaseItem type)
+                    product_id: String(item.product_id || ''),
+                    product_sku: String(item.product_sku || ''),
+                    product_name: String(item.product_name || ''),
+                    product_price: unitPrice,
+                    product_permalink: String(item.product_url || ''),
+                    quantity: Number(item.qty) || 0,
+                    // Short aliases for Liquid templates (allowed by PurchaseItem's index signature)
+                    sku: String(item.product_sku || ''),
+                    name: String(item.product_name || ''),
+                    qty: Number(item.qty) || 0,
+                    price: unitPrice,
+                    url: String(item.product_url || ''),
+                    image_url: imgSrc
+                };
+            });
+
+            // Use Magento's subtotalAmount (accurate, includes all items)
+            var totalAmount = Math.round(Number(cartData.subtotalAmount || 0) * CURRENCY_MULTIPLIER);
+
+            var payload = {
+                unique: { key: (triggerInfo ? String(triggerInfo.product_id) : 'cart') + '_' + Date.now() },
+                value: { currency: (triggerInfo ? String(triggerInfo.currency_code || 'INR') : 'INR'), amount: totalAmount },
+                cart: { items: items },
+                item_count: items.length,
+                subtotal: totalAmount
+            };
+
+            if (triggerInfo) {
+                payload.triggered_by_sku = String(triggerInfo.sku || '');
+                payload.triggered_by_name = String(triggerInfo.name || '');
+            } else {
+                payload.trigger = 'cart_update';
+            }
+
+            // Include cart_id (Magento quote_id) for cart lifecycle matching
+            // Bento uses this to link $cart_created → $cart_updated → $cart_abandoned → $purchase
+            var cartId = getCartId();
+            if (cartId) {
+                payload.cart_id = cartId;
+            }
+
+            return payload;
+        }
+
+        /**
+         * Send a cart event to Bento ($cart_created or $cart_updated).
+         * @param {Object} cartData - Magento cart section data
+         * @param {Object|null} triggerInfo - ATC product info or null for minicart updates
+         */
+        function sendCartEvent(cartData, triggerInfo) {
+            try {
+                var cartPayload = buildFullCartPayload(cartData, triggerInfo);
+
+                var cartAlreadyCreated = false;
+                try { cartAlreadyCreated = !!localStorage.getItem('bento_cart_created'); } catch(e) {}
+                var cartEventName = cartAlreadyCreated ? '$cart_updated' : '$cart_created';
+
+                bento.track(cartEventName, cartPayload);
+                try { localStorage.setItem('bento_cart_created', '1'); } catch(e) {}
+
+                window.bentoDebug && console.debug(
+                    '[Bento] ' + cartEventName + ' tracked (full cart):',
+                    cartPayload.cart.items.length, 'items, subtotal:', cartPayload.subtotal,
+                    triggerInfo ? '| triggered by: ' + triggerInfo.sku : '| trigger: cart_update'
+                );
+            } catch (e) {
+                console.error('[Bento] Failed to send cart event:', e);
+            }
+        }
+
+        // Subscribe to cart section updates
+        // Fires on: ATC, minicart qty update, item remove, coupon apply, etc.
+        cartSection.subscribe(function(cartData) {
+            var currentFingerprint = getCartFingerprint(cartData);
+
+            // Skip the very first emission (initial page-load hydration)
+            if (!cartInitialized) {
+                cartInitialized = true;
+                lastCartFingerprint = currentFingerprint;
+                return;
+            }
+
+            // Path 1: ATC-triggered update (pendingAtc flag set by click handler)
+            if (pendingAtc) {
+                var atcInfo = pendingAtc;
+                pendingAtc = null;
+                if (pendingAtcTimeout) { clearTimeout(pendingAtcTimeout); pendingAtcTimeout = null; }
+
+                lastCartFingerprint = currentFingerprint;
+                sendCartEvent(cartData, atcInfo);
+
+                // Reset debounce
+                setTimeout(function() { addToCartInProgress = false; }, 1000);
+                return;
+            }
+
+            // Path 2: Non-ATC cart change (minicart qty update, item remove, etc.)
+            // Only send if the cart actually changed (prevents noise from section reloads)
+            if (currentFingerprint !== lastCartFingerprint) {
+                lastCartFingerprint = currentFingerprint;
+
+                // Empty cart = all items removed, reset cart lifecycle
+                if (!cartData.items || !cartData.items.length) {
+                    try { localStorage.removeItem('bento_cart_created'); } catch(e) {}
+                    window.bentoDebug && console.debug('[Bento] Cart emptied, reset cart lifecycle');
+                    return;
+                }
+
+                sendCartEvent(cartData, null);
+            }
+        });
+
+        // ATC click handler — captures what was added, waits for cart section refresh
+        $(document).on('click', '<?= $block->escapeJs($addToCartSelector) ?>', function(e) {
+            if (addToCartInProgress) {
+                window.bentoDebug && console.debug('[Bento] Add to cart already in progress, skipping');
+                return;
+            }
+
+            try {
+                addToCartInProgress = true;
+
+                var $btn = $(this);
+                var $form = $btn.closest('form');
+
+                // Detect color table / variant table
+                var isVariantRow = $form.hasClass('ajax-add-to-cart-form') && $form.data('product-id');
+                var atcInfo;
+
+                if (isVariantRow) {
+                    var childId = String($form.data('product-id'));
+                    var childSku = $btn.data('id') || $form.find('input[name="sku"]').val() || '';
+                    atcInfo = {
+                        product_id: parseInt(childId),
+                        sku: String(childSku),
+                        name: productData.name + ' (' + childSku + ')',
+                        currency_code: productData.currency_code
+                    };
+                    window.bentoDebug && console.debug('[Bento] Variant ATC detected — child SKU:', childSku);
+                } else {
+                    atcInfo = {
+                        product_id: productData.product_id,
+                        sku: productData.sku,
+                        name: productData.name,
+                        currency_code: productData.currency_code
+                    };
+                }
+
+                // Set pending flag — cart section subscriber will pick this up
+                pendingAtc = atcInfo;
+
+                // Safety timeout: if cart section doesn't update within 8s, clear the flag
+                pendingAtcTimeout = setTimeout(function() {
+                    if (pendingAtc) {
+                        window.bentoDebug && console.debug('[Bento] Cart section did not update within 8s, clearing pending ATC');
+                        pendingAtc = null;
+                        addToCartInProgress = false;
+                    }
+                }, 8000);
+
+            } catch (e) {
+                addToCartInProgress = false;
+                console.error('[Bento] Failed to capture add to cart:', e);
+            }
+        });
+        <?php endif; ?>
+    }
+});
+<?php $productTrackingScript = trim((string)ob_get_clean()); ?>
+<?= /* @noEscape */ $secureRenderer->renderTag('script', [], $productTrackingScript, false) ?>

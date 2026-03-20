@@ -1,0 +1,161 @@
+<?php
+/**
+ * Checkout Tracking Template
+ *
+ * Tracks checkout started event with deduplication to prevent multiple fires.
+ * Uses sessionStorage to prevent re-tracking on page refresh within same session.
+ *
+ * @var \Magento\Framework\View\Element\Template $block
+ * @var \ArtLounge\BentoTracking\ViewModel\TrackingData $viewModel
+ */
+
+$viewModel = $block->getData('view_model');
+
+if (!$viewModel->isEnabled() || !$viewModel->isCheckoutEnabled()) {
+    return;
+}
+
+// Get store currency as fallback (Varnish-safe: same for all users on same store)
+$storeCurrency = $viewModel->getCurrencyCode();
+$currencyMultiplier = $viewModel->getCurrencyMultiplier();
+?>
+<?php ob_start(); ?>
+require(['jquery', 'Magento_Customer/js/customer-data', 'domReady!'], function($, customerData) {
+    'use strict';
+
+    // MagePack guard: prevent duplicate execution from RequireJS rebundling
+    if (window._bentoCheckoutTrackingDone) return;
+    window._bentoCheckoutTrackingDone = true;
+
+    var checkoutTracked = false;
+    var STORAGE_KEY = 'bento_checkout_tracked';
+
+    // Check if already tracked in this session (survives page refresh)
+    function isAlreadyTrackedInSession(cartId) {
+        try {
+            var tracked = sessionStorage.getItem(STORAGE_KEY);
+            if (tracked) {
+                var data = JSON.parse(tracked);
+                // Only consider tracked if same cart and within last 30 minutes
+                var thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
+                if (data.cartId === cartId && data.timestamp > thirtyMinutesAgo) {
+                    return true;
+                }
+            }
+        } catch (e) {
+            // sessionStorage not available or parse error
+        }
+        return false;
+    }
+
+    function markTrackedInSession(cartId) {
+        try {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+                cartId: cartId,
+                timestamp: Date.now()
+            }));
+        } catch (e) {
+            // sessionStorage not available
+        }
+    }
+
+    // Wait for Bento to load
+    var checkBento = setInterval(function() {
+        if (typeof bento !== 'undefined') {
+            clearInterval(checkBento);
+            trackCheckoutStarted();
+        }
+    }, 100);
+
+    // Timeout after 10 seconds
+    setTimeout(function() {
+        clearInterval(checkBento);
+    }, 10000);
+
+    function trackCheckoutStarted() {
+        try {
+            var cart = customerData.get('cart');
+
+            // Subscribe to cart data changes
+            cart.subscribe(function(cartData) {
+                // Prevent multiple tracking within same page load
+                if (checkoutTracked) {
+                    return;
+                }
+
+                if (cartData && cartData.items && cartData.items.length > 0) {
+                    // Use quote_id (Magento cart section includes it as 'quote_id') for session deduplication
+                    // Falls back to summary_count + subtotal hash if quote_id unavailable
+                    var cartId = cartData.quote_id || (cartData.summary_count + '_' + cartData.subtotalAmount);
+
+                    // Check session storage to prevent tracking on page refresh
+                    if (isAlreadyTrackedInSession(cartId)) {
+                        window.bentoDebug && console.debug('[Bento] Checkout already tracked in this session, skipping');
+                        checkoutTracked = true;
+                        return;
+                    }
+
+                    // Get multiplier for price conversion
+                    var multiplier = <?= (int)$currencyMultiplier ?>;
+
+                    // Bento Sales tab requires canonical keys: product_name, product_sku, quantity
+                    var items = cartData.items.map(function(item) {
+                        var imgSrc = (item.product_image && item.product_image.src) ? item.product_image.src : '';
+                        var unitPrice = Math.round(parseFloat(item.product_price_value || 0) * multiplier);
+                        return {
+                            // Canonical keys for Bento Sales tab parser
+                            product_id: String(item.product_id || ''),
+                            product_sku: String(item.product_sku || ''),
+                            product_name: String(item.product_name || ''),
+                            product_price: unitPrice,
+                            product_permalink: String(item.product_url || ''),
+                            quantity: Number(item.qty) || 0,
+                            // Short aliases for Liquid templates
+                            sku: String(item.product_sku || ''),
+                            name: String(item.product_name || ''),
+                            qty: Number(item.qty) || 0,
+                            price: unitPrice,
+                            url: String(item.product_url || ''),
+                            image_url: imgSrc
+                        };
+                    });
+
+                    // Use cart currency if available, otherwise fall back to store currency
+                    var currencyCode = cartData.currency || '<?= $block->escapeJs($storeCurrency) ?>';
+
+                    var checkoutData = {
+                        item_count: Number(cartData.summary_count) || 0,
+                        subtotal: Math.round(parseFloat(cartData.subtotalAmount || 0) * multiplier),
+                        currency_code: currencyCode,
+                        cart: { items: items }
+                    };
+
+                    // Add customer email if available (for guest identification)
+                    if (cartData.customer_email) {
+                        checkoutData.email = cartData.customer_email;
+                    }
+
+                    // Spread checkout data at top level — Bento client SDK ignores nested 'details'
+                    var checkoutPayload = Object.assign({}, checkoutData, {
+                        unique: { key: 'checkout_' + cartId }
+                    });
+                    bento.track('$checkoutStarted', checkoutPayload);
+
+                    // Mark as tracked for this page load and session
+                    checkoutTracked = true;
+                    markTrackedInSession(cartId);
+
+                    window.bentoDebug && console.debug('[Bento] Checkout started tracked:', checkoutData.item_count, 'items');
+                }
+            });
+
+            // Trigger initial check
+            cart.valueHasMutated();
+
+        } catch (e) {
+            console.error('[Bento] Failed to track checkout started:', e);
+        }
+    }
+});
+<?php $checkoutTrackingScript = trim((string)ob_get_clean()); ?>
+<?= /* @noEscape */ $secureRenderer->renderTag('script', [], $checkoutTrackingScript, false) ?>

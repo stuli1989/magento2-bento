@@ -1,0 +1,24 @@
+{
+    "name": "artlounge/module-bento-core",
+    "description": "ArtLounge Bento Core - Shared configuration and API client for Bento integration",
+    "type": "magento2-module",
+    "license": "MIT",
+    "version": "1.0.0",
+    "require": {
+        "php": ">=8.1",
+        "magento/framework": "*",
+        "magento/module-store": "*",
+        "magento/module-config": "*",
+        "magento/module-backend": "*",
+        "aligent/async-events": "^3.0",
+        "ramsey/uuid": "^4.0"
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "ArtLounge\\BentoCore\\": ""
+        }
+    }
+}
