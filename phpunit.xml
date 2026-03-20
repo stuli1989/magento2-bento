@@ -8,22 +8,30 @@
 >
     <testsuites>
         <testsuite name="ArtLounge Bento Unit Tests">
-            <directory>modules/ArtLounge/BentoCore/Test/Unit</directory>
-            <directory>modules/ArtLounge/BentoEvents/Test/Unit</directory>
-            <directory>modules/ArtLounge/BentoTracking/Test/Unit</directory>
+            <directory>src/BentoCore/Test/Unit</directory>
+            <directory>src/BentoEvents/Test/Unit</directory>
+            <directory>src/BentoTracking/Test/Unit</directory>
         </testsuite>
         <testsuite name="ArtLounge Bento Integration Tests">
-            <directory>modules/ArtLounge/BentoCore/Test/Integration</directory>
-            <directory>modules/ArtLounge/BentoEvents/Test/Integration</directory>
+            <directory>src/BentoCore/Test/Integration</directory>
+            <directory>src/BentoEvents/Test/Integration</directory>
         </testsuite>
     </testsuites>
 
     <coverage processUncoveredFiles="true">
         <include>
-            <directory suffix=".php">modules/ArtLounge/BentoCore</directory>
-            <directory suffix=".php">modules/ArtLounge/BentoEvents</directory>
-            <directory suffix=".php">modules/ArtLounge/BentoTracking</directory>
+            <directory suffix=".php">src/BentoCore</directory>
+            <directory suffix=".php">src/BentoEvents</directory>
+            <directory suffix=".php">src/BentoTracking</directory>
         </include>
+        <exclude>
+            <directory>src/BentoCore/Test</directory>
+            <directory>src/BentoEvents/Test</directory>
+            <directory>src/BentoTracking/Test</directory>
+            <file>src/BentoCore/registration.php</file>
+            <file>src/BentoEvents/registration.php</file>
+            <file>src/BentoTracking/registration.php</file>
+        </exclude>
         <report>
             <text outputFile="php://stdout" showOnlySummary="false"/>
             <html outputDirectory="build/coverage"/>

@@ -1,0 +1,9 @@
+/tests                      export-ignore
+/docs                       export-ignore
+/.github                    export-ignore
+/src/BentoCore/Test         export-ignore
+/src/BentoEvents/Test       export-ignore
+/src/BentoTracking/Test     export-ignore
+CONTRIBUTING.md             export-ignore
+phpunit.xml                 export-ignore
+.phpunit.result.cache       export-ignore
