@@ -17,6 +17,8 @@ use Magento\Framework\UrlInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
 use Magento\Quote\Api\Data\CartInterface;
 use Magento\Quote\Api\Data\CartItemInterface;
+use Magento\Quote\Api\Data\CurrencyInterface;
+use Magento\Quote\Model\Quote\Address as QuoteAddress;
 use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -285,14 +287,21 @@ class AbandonedCartServiceTest extends TestCase
         $store->method('getBaseUrl')->willReturn('https://example.com/media/');
         $this->storeManager->method('getStore')->willReturn($store);
 
+        $currency = $this->createMock(CurrencyInterface::class);
+        $currency->method('getQuoteCurrencyCode')->willReturn('INR');
+
+        $shippingAddress = $this->createMock(QuoteAddress::class);
+        $shippingAddress->method('getDiscountAmount')->willReturn(-20.0);
+
         $quote->method('getStoreId')->willReturn(1);
         $quote->method('getId')->willReturn(10);
         $quote->method('getCreatedAt')->willReturn('2026-01-24 09:00:00');
         $quote->method('getUpdatedAt')->willReturn('2026-01-24 10:00:00');
         $quote->method('getGrandTotal')->willReturn(200.0);
         $quote->method('getSubtotal')->willReturn(200.0);
-        $quote->method('getSubtotalWithDiscount')->willReturn(180.0);
-        $quote->method('getQuoteCurrencyCode')->willReturn('INR');
+        $quote->method('getCurrency')->willReturn($currency);
+        $quote->method('isVirtual')->willReturn(false);
+        $quote->method('getShippingAddress')->willReturn($shippingAddress);
         $quote->method('getCustomerEmail')->willReturn('test@example.com');
         $quote->method('getCustomerFirstname')->willReturn('Test');
         $quote->method('getCustomerLastname')->willReturn('User');

@@ -72,6 +72,17 @@ class AbandonedCartService
         // Generate coupon if enabled (called once, result reused for payload + URL)
         $couponData = $this->couponService->generateForCart($quoteId, $storeId);
 
+        // Currency code via proper CartInterface API
+        $currency = $quote->getCurrency();
+        $currencyCode = $currency !== null ? $currency->getQuoteCurrencyCode() : null;
+
+        // Discount from address totals (reliable after collectTotals)
+        $discountAmount = 0.0;
+        $address = $quote->isVirtual() ? $quote->getBillingAddress() : $quote->getShippingAddress();
+        if ($address !== null) {
+            $discountAmount = abs((float)$address->getDiscountAmount());
+        }
+
         $data = [
             'event_type' => '$cart_abandoned',
             'cart_id' => $quoteId, // Top-level for Bento flow matching
@@ -87,8 +98,8 @@ class AbandonedCartService
             'financials' => [
                 'total_value' => (int)round((float)$quote->getGrandTotal() * $multiplier),
                 'subtotal' => (int)round((float)$quote->getSubtotal() * $multiplier),
-                'discount_amount' => (int)round(abs((float)$quote->getSubtotal() - (float)$quote->getSubtotalWithDiscount()) * $multiplier),
-                'currency_code' => $quote->getQuoteCurrencyCode()
+                'discount_amount' => (int)round($discountAmount * $multiplier),
+                'currency_code' => $currencyCode
             ],
 
             'items' => $items,

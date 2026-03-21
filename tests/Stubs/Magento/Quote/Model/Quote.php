@@ -19,8 +19,10 @@ class Quote
     public function getCustomerFirstname() { return null; }
     public function getCustomerLastname() { return null; }
     public function getSubtotal() { return 0.0; }
-    public function getSubtotalWithDiscount() { return 0.0; }
-    public function getQuoteCurrencyCode() { return 'USD'; }
+    public function getCurrency() { return null; }
+    public function isVirtual() { return false; }
+    public function getShippingAddress() { return null; }
+    public function getBillingAddress() { return null; }
     public function getCustomerIsGuest() { return true; }
     public function getAllVisibleItems() { return []; }
     public function getAllItems() { return []; }

@@ -12,8 +12,10 @@ interface CartInterface
     public function getUpdatedAt();
     public function getGrandTotal();
     public function getSubtotal();
-    public function getSubtotalWithDiscount();
-    public function getQuoteCurrencyCode();
+    public function getCurrency();
+    public function isVirtual();
+    public function getShippingAddress();
+    public function getBillingAddress();
     public function getCustomerEmail();
     public function getCustomerFirstname();
     public function getCustomerLastname();
