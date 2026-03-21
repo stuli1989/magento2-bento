@@ -21,6 +21,12 @@
         </arguments>
     </type>
 
+    <type name="ArtLounge\BentoEvents\Service\CouponService">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
     <type name="ArtLounge\BentoEvents\Model\AbandonedCart\Scheduler">
         <arguments>
             <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
