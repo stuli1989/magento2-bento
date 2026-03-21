@@ -571,6 +571,11 @@ class BentoClient implements BentoClientInterface
             $details['recovery_url'] = $data['recovery']['cart_url'];
         }
 
+        // Include coupon data for abandoned carts
+        if (!empty($data['coupon'])) {
+            $details['coupon'] = $data['coupon'];
+        }
+
         return $details;
     }
 
