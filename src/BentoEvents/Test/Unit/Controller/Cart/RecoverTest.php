@@ -18,6 +18,8 @@ use Magento\Framework\Message\ManagerInterface as MessageManager;
 use Magento\Framework\UrlInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
 use Magento\Quote\Api\Data\CartInterface;
+use Magento\Store\Api\Data\StoreInterface;
+use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -60,6 +62,7 @@ class RecoverTest extends TestCase
         $quote->method('getIsActive')->willReturn(true);
         $quote->method('getItemsCount')->willReturn(1);
         $quote->method('getCustomerId')->willReturn(null);
+        $quote->method('getStoreId')->willReturn(1);
         $mocks['cartRepository']->method('get')->with(10)->willReturn($quote);
 
         $mocks['checkoutSession']->expects($this->once())->method('setQuoteId')->with(10);
@@ -85,6 +88,7 @@ class RecoverTest extends TestCase
 
         $quote = $this->createMock(CartInterface::class);
         $quote->method('getCustomerEmail')->willReturn('other@example.com');
+        $quote->method('getStoreId')->willReturn(1);
         $mocks['cartRepository']->method('get')->with(10)->willReturn($quote);
         $mocks['messageManager']->expects($this->once())->method('addErrorMessage');
 
@@ -105,6 +109,7 @@ class RecoverTest extends TestCase
         $quote = $this->createMock(CartInterface::class);
         $quote->method('getCustomerEmail')->willReturn('test@example.com');
         $quote->method('getIsActive')->willReturn(false);
+        $quote->method('getStoreId')->willReturn(1);
         $mocks['cartRepository']->method('get')->with(10)->willReturn($quote);
         $mocks['messageManager']->expects($this->once())->method('addNoticeMessage');
 
@@ -126,6 +131,7 @@ class RecoverTest extends TestCase
         $quote->method('getCustomerEmail')->willReturn('test@example.com');
         $quote->method('getIsActive')->willReturn(true);
         $quote->method('getItemsCount')->willReturn(0);
+        $quote->method('getStoreId')->willReturn(1);
         $mocks['cartRepository']->method('get')->with(10)->willReturn($quote);
         $mocks['messageManager']->expects($this->once())->method('addNoticeMessage');
 
@@ -148,6 +154,7 @@ class RecoverTest extends TestCase
         $quote->method('getIsActive')->willReturn(true);
         $quote->method('getItemsCount')->willReturn(2);
         $quote->method('getCustomerId')->willReturn(42);
+        $quote->method('getStoreId')->willReturn(1);
         $mocks['cartRepository']->method('get')->with(10)->willReturn($quote);
 
         $mocks['customerSession']->method('isLoggedIn')->willReturn(true);
@@ -178,6 +185,7 @@ class RecoverTest extends TestCase
         $quote->method('getIsActive')->willReturn(true);
         $quote->method('getItemsCount')->willReturn(2);
         $quote->method('getCustomerId')->willReturn(42);
+        $quote->method('getStoreId')->willReturn(1);
         $mocks['cartRepository']->method('get')->with(10)->willReturn($quote);
 
         $mocks['customerSession']->method('isLoggedIn')->willReturn(true);
@@ -221,9 +229,13 @@ class RecoverTest extends TestCase
         $redirectFactory->method('create')->willReturn($redirect);
         $customerSession = $this->getMockBuilder(CustomerSession::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['isLoggedIn', 'getCustomerId'])
-            ->addMethods(['setBeforeAuthUrl', 'setAfterAuthUrl'])
+            ->onlyMethods(['isLoggedIn', 'getCustomerId', 'setBeforeAuthUrl', 'setAfterAuthUrl'])
             ->getMock();
+
+        $store = $this->createMock(StoreInterface::class);
+        $store->method('getId')->willReturn(1);
+        $storeManager = $this->createMock(StoreManagerInterface::class);
+        $storeManager->method('getStore')->willReturn($store);
 
         return [
             'request' => $this->createMock(RequestInterface::class),
@@ -236,6 +248,7 @@ class RecoverTest extends TestCase
             'urlBuilder' => $this->createMock(UrlInterface::class),
             'messageManager' => $this->createMock(MessageManager::class),
             'logger' => $this->createMock(LoggerInterface::class),
+            'storeManager' => $storeManager,
         ];
     }
 
@@ -250,7 +263,8 @@ class RecoverTest extends TestCase
             $mocks['customerSession'],
             $mocks['urlBuilder'],
             $mocks['messageManager'],
-            $mocks['logger']
+            $mocks['logger'],
+            $mocks['storeManager']
         );
     }
 

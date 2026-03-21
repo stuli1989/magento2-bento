@@ -19,6 +19,7 @@ use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Framework\Message\ManagerInterface as MessageManager;
 use Magento\Framework\UrlInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
+use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
 
 class Recover implements HttpGetActionInterface
@@ -32,7 +33,8 @@ class Recover implements HttpGetActionInterface
         private readonly CustomerSession $customerSession,
         private readonly UrlInterface $urlBuilder,
         private readonly MessageManager $messageManager,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly StoreManagerInterface $storeManager
     ) {
     }
 
@@ -54,15 +56,21 @@ class Recover implements HttpGetActionInterface
         $cartRedirectParams = $this->buildCartRedirectParams($autoPayRequested);
 
         try {
-            $tokenData = $this->recoveryToken->parse($token);
+            $currentStoreId = (int)$this->storeManager->getStore()->getId();
+            $tokenData = $this->recoveryToken->parse($token, $currentStoreId);
             $quoteId = (int)$tokenData['quote_id'];
             $email = (string)$tokenData['email'];
 
             // Load the quote
             $quote = $this->cartRepository->get($quoteId);
 
+            // Validate quote belongs to the same store as the token
+            if ((int)$quote->getStoreId() !== $tokenData['store_id']) {
+                throw new \InvalidArgumentException('Quote does not belong to this store');
+            }
+
             // Validate email matches
-            if (strtolower($quote->getCustomerEmail()) !== strtolower($email)) {
+            if (strtolower((string)$quote->getCustomerEmail()) !== strtolower($email)) {
                 throw new \InvalidArgumentException('Token email mismatch');
             }
 

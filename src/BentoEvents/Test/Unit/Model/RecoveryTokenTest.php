@@ -47,7 +47,7 @@ class RecoveryTokenTest extends TestCase
         $token = $tokenService->generate(10, 'Test@Example.com', 2);
 
         $this->assertNotNull($token);
-        $parsed = $tokenService->parse((string)$token);
+        $parsed = $tokenService->parse((string)$token, 2);
 
         $this->assertSame(10, $parsed['quote_id']);
         $this->assertSame('test@example.com', $parsed['email']);
@@ -66,7 +66,7 @@ class RecoveryTokenTest extends TestCase
         $tampered = $payload . '.' . substr($sig, 1) . 'a';
 
         $this->expectException(\InvalidArgumentException::class);
-        $tokenService->parse($tampered);
+        $tokenService->parse($tampered, 1);
     }
 
     public function testParseThrowsOnExpiredToken(): void
@@ -78,6 +78,6 @@ class RecoveryTokenTest extends TestCase
         $token = (string)$tokenService->generate(10, 'test@example.com', 1);
 
         $this->expectException(\InvalidArgumentException::class);
-        $tokenService->parse($token);
+        $tokenService->parse($token, 1);
     }
 }

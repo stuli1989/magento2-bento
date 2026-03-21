@@ -26,6 +26,8 @@ use Magento\Framework\Stdlib\DateTime\DateTime;
 use Magento\Framework\UrlInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
 use Magento\Quote\Model\Quote;
+use Magento\Store\Api\Data\StoreInterface;
+use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
@@ -39,6 +41,7 @@ class RecoveryFlowTest extends TestCase
 
     private RecoveryToken $token;
     private ConfigInterface $config;
+    private StoreManagerInterface $storeManager;
 
     protected function setUp(): void
     {
@@ -52,6 +55,11 @@ class RecoveryFlowTest extends TestCase
         ]);
 
         $this->token = new RecoveryToken($this->config, $json, $dateTime);
+
+        $store = $this->createMock(StoreInterface::class);
+        $store->method('getId')->willReturn(self::STORE_ID);
+        $this->storeManager = $this->createMock(StoreManagerInterface::class);
+        $this->storeManager->method('getStore')->willReturn($store);
     }
 
     // ══════════════════════════════════════════════
@@ -65,7 +73,7 @@ class RecoveryFlowTest extends TestCase
         $this->assertNotNull($tokenStr);
         $this->assertStringContainsString('.', $tokenStr, 'Token must have payload.signature format');
 
-        $parsed = $this->token->parse($tokenStr);
+        $parsed = $this->token->parse($tokenStr, self::STORE_ID);
 
         $this->assertSame(self::QUOTE_ID, $parsed['quote_id']);
         $this->assertSame('cart@example.com', $parsed['email']); // normalized
@@ -83,7 +91,7 @@ class RecoveryFlowTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid token format');
-        $this->token->parse('not-a-valid-token');
+        $this->token->parse('not-a-valid-token', self::STORE_ID);
     }
 
     public function testParseRejectsTamperedSignature(): void
@@ -94,7 +102,7 @@ class RecoveryFlowTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid token signature');
-        $this->token->parse($tampered);
+        $this->token->parse($tampered, self::STORE_ID);
     }
 
     public function testParseRejectsExpiredToken(): void
@@ -111,7 +119,7 @@ class RecoveryFlowTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Token has expired');
-        $futureToken->parse($tokenStr);
+        $futureToken->parse($tokenStr, self::STORE_ID);
     }
 
     // ══════════════════════════════════════════════
@@ -158,7 +166,8 @@ class RecoveryFlowTest extends TestCase
             $customerSession,
             $this->createMock(UrlInterface::class),
             $messageManager,
-            $this->createMock(LoggerInterface::class)
+            $this->createMock(LoggerInterface::class),
+            $this->storeManager
         );
 
         $result = $controller->execute();
@@ -215,7 +224,8 @@ class RecoveryFlowTest extends TestCase
             $customerSession,
             $urlBuilder,
             $messageManager,
-            $this->createMock(LoggerInterface::class)
+            $this->createMock(LoggerInterface::class),
+            $this->storeManager
         );
 
         $result = $controller->execute();
@@ -267,7 +277,8 @@ class RecoveryFlowTest extends TestCase
             new CustomerSession(),
             $this->createMock(UrlInterface::class),
             $messageManager,
-            $this->createMock(LoggerInterface::class)
+            $this->createMock(LoggerInterface::class),
+            $this->storeManager
         );
 
         $result = $controller->execute();
@@ -304,7 +315,8 @@ class RecoveryFlowTest extends TestCase
             new CustomerSession(),
             $this->createMock(UrlInterface::class),
             $messageManager,
-            $this->createMock(LoggerInterface::class)
+            $this->createMock(LoggerInterface::class),
+            $this->storeManager
         );
 
         $result = $controller->execute();
@@ -338,7 +350,8 @@ class RecoveryFlowTest extends TestCase
             new CustomerSession(),
             $this->createMock(UrlInterface::class),
             $this->createMock(MessageManager::class),
-            $this->createMock(LoggerInterface::class)
+            $this->createMock(LoggerInterface::class),
+            $this->storeManager
         );
 
         $result = $controller->execute();

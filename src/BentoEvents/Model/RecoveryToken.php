@@ -58,10 +58,16 @@ class RecoveryToken
     /**
      * Parse and validate a recovery token.
      *
+     * The signing secret is derived from $expectedStoreId (provided by the
+     * caller from request/store context), NOT from the token payload.
+     * This prevents an attacker from choosing which store's secret is used
+     * for verification.
+     *
      * @param string $token
+     * @param int $expectedStoreId Store ID from current request context
      * @return array{quote_id:int,email:string,store_id:int}
      */
-    public function parse(string $token): array
+    public function parse(string $token, int $expectedStoreId): array
     {
         $parts = explode('.', $token, 2);
         if (count($parts) !== 2 || $parts[0] === '' || $parts[1] === '') {
@@ -69,6 +75,12 @@ class RecoveryToken
         }
 
         [$encodedPayload, $providedSignature] = $parts;
+
+        // Verify signature using the caller-provided store ID, not the token's
+        $expectedSignature = hash_hmac('sha256', $encodedPayload, $this->getSigningSecret($expectedStoreId));
+        if (!hash_equals($expectedSignature, $providedSignature)) {
+            throw new \InvalidArgumentException('Invalid token signature');
+        }
 
         $payloadJson = $this->base64UrlDecode($encodedPayload);
         if ($payloadJson === null) {
@@ -94,9 +106,9 @@ class RecoveryToken
             throw new \InvalidArgumentException('Token has expired');
         }
 
-        $expectedSignature = hash_hmac('sha256', $encodedPayload, $this->getSigningSecret($storeId));
-        if (!hash_equals($expectedSignature, $providedSignature)) {
-            throw new \InvalidArgumentException('Invalid token signature');
+        // Verify the token's embedded store ID matches the expected store
+        if ($storeId !== $expectedStoreId) {
+            throw new \InvalidArgumentException('Token store mismatch');
         }
 
         return [
