@@ -109,8 +109,7 @@ class CreateBentoSubscriptions implements DataPatchInterface
             $asyncEvent->setSubscribedAt($this->dateTime->gmtDate());
             $asyncEvent->setStoreId(0); // Default store (applies to all stores)
 
-            // Save without resource check (we're in setup context)
-            $this->asyncEventRepository->save($asyncEvent, false);
+            $this->asyncEventRepository->save($asyncEvent);
 
             $this->logger->info('Created Bento subscription', [
                 'event_name' => $eventName,
