@@ -9,7 +9,6 @@ namespace ArtLounge\BentoEvents\Test\Unit\Service;
 
 use ArtLounge\BentoCore\Api\ConfigInterface;
 use ArtLounge\BentoEvents\Service\CouponService;
-use Magento\SalesRule\Api\RuleRepositoryInterface;
 use Magento\SalesRule\Model\Coupon;
 use Magento\SalesRule\Model\CouponFactory;
 use Magento\SalesRule\Model\ResourceModel\Coupon as CouponResource;
@@ -23,7 +22,6 @@ class CouponServiceTest extends TestCase
 {
     private CouponService $service;
     private MockObject $config;
-    private MockObject $ruleRepository;
     private MockObject $couponFactory;
     private MockObject $couponResource;
     private MockObject $couponCollectionFactory;
@@ -32,7 +30,6 @@ class CouponServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->config = $this->createMock(ConfigInterface::class);
-        $this->ruleRepository = $this->createMock(RuleRepositoryInterface::class);
         $this->couponFactory = $this->createMock(CouponFactory::class);
         $this->couponResource = $this->createMock(CouponResource::class);
         $this->couponCollectionFactory = $this->createMock(CouponCollectionFactory::class);
@@ -40,7 +37,6 @@ class CouponServiceTest extends TestCase
 
         $this->service = new CouponService(
             $this->config,
-            $this->ruleRepository,
             $this->couponFactory,
             $this->couponResource,
             $this->couponCollectionFactory,
@@ -67,34 +63,6 @@ class CouponServiceTest extends TestCase
         $this->assertNull($result);
     }
 
-    public function testReturnsNullWhenRuleNotFound(): void
-    {
-        $this->config->method('isCouponEnabled')->willReturn(true);
-        $this->config->method('getCouponRuleId')->willReturn(42);
-
-        // findExistingCoupon collection: no existing coupon
-        $existingCollection = $this->createMock(Collection::class);
-        $existingCollection->method('addFieldToFilter')->willReturnSelf();
-        $existingCollection->method('setPageSize')->willReturnSelf();
-        $existingItem = $this->createMock(Coupon::class);
-        $existingItem->method('getId')->willReturn(null);
-        $existingCollection->method('getFirstItem')->willReturn($existingItem);
-
-        $this->couponCollectionFactory->method('create')
-            ->willReturn($existingCollection);
-
-        $this->ruleRepository->method('getById')
-            ->willThrowException(new \RuntimeException('Rule not found'));
-
-        $this->logger->expects($this->once())
-            ->method('warning')
-            ->with('Bento coupon: configured rule not found', $this->anything());
-
-        $result = $this->service->generateForCart(100, 1);
-
-        $this->assertNull($result);
-    }
-
     public function testGeneratesCouponWithCorrectFormat(): void
     {
         $this->config->method('isCouponEnabled')->willReturn(true);
@@ -102,25 +70,17 @@ class CouponServiceTest extends TestCase
         $this->config->method('getCouponPrefix')->willReturn('BENTO');
         $this->config->method('getCouponLifetimeDays')->willReturn(7);
 
-        // Collection mock for both findExistingCoupon and codeExists calls
         $existingCollection = $this->createMock(Collection::class);
         $existingCollection->method('addFieldToFilter')->willReturnSelf();
         $existingCollection->method('setPageSize')->willReturnSelf();
-        // findExistingCoupon: no existing coupon (getId returns null)
         $existingItem = $this->createMock(Coupon::class);
         $existingItem->method('getId')->willReturn(null);
         $existingCollection->method('getFirstItem')->willReturn($existingItem);
-        // codeExists: no collision (getSize returns 0)
         $existingCollection->method('getSize')->willReturn(0);
 
         $this->couponCollectionFactory->method('create')
             ->willReturn($existingCollection);
 
-        $this->ruleRepository->method('getById')->willReturn(
-            $this->createMock(\Magento\SalesRule\Api\Data\RuleInterface::class)
-        );
-
-        // CouponFactory returns a mock coupon that accepts setters
         $coupon = $this->createMock(Coupon::class);
         $coupon->method('setRuleId')->willReturnSelf();
         $coupon->method('setCode')->willReturnSelf();
@@ -147,7 +107,6 @@ class CouponServiceTest extends TestCase
         $this->config->method('isCouponEnabled')->willReturn(true);
         $this->config->method('getCouponRuleId')->willReturn(42);
 
-        // findExistingCoupon: returns an existing coupon
         $existingCollection = $this->createMock(Collection::class);
         $existingCollection->method('addFieldToFilter')->willReturnSelf();
         $existingCollection->method('setPageSize')->willReturnSelf();
@@ -160,8 +119,6 @@ class CouponServiceTest extends TestCase
         $this->couponCollectionFactory->method('create')
             ->willReturn($existingCollection);
 
-        // The rule repository and coupon factory should NOT be called
-        $this->ruleRepository->expects($this->never())->method('getById');
         $this->couponFactory->expects($this->never())->method('create');
 
         $result = $this->service->generateForCart(100, 1);

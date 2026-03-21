@@ -97,7 +97,8 @@ class Recover implements HttpGetActionInterface
                     );
                 } else {
                     // Different customer or not logged in
-                    $recoveryUrl = $this->buildRecoveryUrl($token, $autoPayRequested);
+                    $couponParam = $this->request->getParam('coupon');
+                    $recoveryUrl = $this->buildRecoveryUrl($token, $autoPayRequested, is_string($couponParam) ? $couponParam : null);
                     $this->setCustomerAuthRedirectUrls($recoveryUrl);
 
                     if ($this->customerSession->isLoggedIn()) {
@@ -191,7 +192,7 @@ class Recover implements HttpGetActionInterface
     /**
      * Build a recovery URL for post-login continuation.
      */
-    private function buildRecoveryUrl(string $token, bool $autoPayRequested): string
+    private function buildRecoveryUrl(string $token, bool $autoPayRequested, ?string $couponCode = null): string
     {
         $params = [
             'recover' => $token,
@@ -200,6 +201,10 @@ class Recover implements HttpGetActionInterface
 
         if ($autoPayRequested) {
             $params['autopay'] = 1;
+        }
+
+        if ($couponCode !== null) {
+            $params['coupon'] = $couponCode;
         }
 
         return $this->urlBuilder->getUrl('bento/cart/recover', $params);

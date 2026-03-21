@@ -114,11 +114,9 @@ class AbandonedCartService
             }
         }
 
-        // Include coupon data in payload
-        $data['coupon'] = [
-            'code' => $couponData['code'] ?? null,
-            'expires_at' => $couponData['expires_at'] ?? null,
-        ];
+        if ($couponData !== null) {
+            $data['coupon'] = $couponData;
+        }
 
         return $data;
     }

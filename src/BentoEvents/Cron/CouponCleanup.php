@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace ArtLounge\BentoEvents\Cron;
 
 use ArtLounge\BentoCore\Api\ConfigInterface;
-use Magento\SalesRule\Model\ResourceModel\Coupon\CollectionFactory as CouponCollectionFactory;
+use Magento\SalesRule\Model\ResourceModel\Coupon as CouponResource;
 use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -14,7 +14,7 @@ class CouponCleanup
 
     public function __construct(
         private readonly ConfigInterface $config,
-        private readonly CouponCollectionFactory $couponCollectionFactory,
+        private readonly CouponResource $couponResource,
         private readonly StoreManagerInterface $storeManager,
         private readonly LoggerInterface $logger
     ) {
@@ -22,7 +22,6 @@ class CouponCleanup
 
     public function execute(): void
     {
-        // Collect distinct rule_id/prefix combinations across all stores
         $combinations = [];
         foreach ($this->storeManager->getStores() as $store) {
             $storeId = (int)$store->getId();
@@ -44,8 +43,10 @@ class CouponCleanup
             return;
         }
 
-        $now = (new \DateTime())->format('Y-m-d H:i:s');
-        $retentionCutoff = (new \DateTime('-' . self::USED_RETENTION_DAYS . ' days'))
+        $connection = $this->couponResource->getConnection();
+        $tableName = $this->couponResource->getMainTable();
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $retentionCutoff = (new \DateTimeImmutable('-' . self::USED_RETENTION_DAYS . ' days'))
             ->format('Y-m-d H:i:s');
 
         $totalDeleted = 0;
@@ -54,29 +55,21 @@ class CouponCleanup
             $ruleId = $combo['rule_id'];
             $prefix = $combo['prefix'];
 
-            // Delete expired coupons
-            $expired = $this->couponCollectionFactory->create();
-            $expired->addFieldToFilter('rule_id', $ruleId);
-            $expired->addFieldToFilter('code', ['like' => $prefix . '-%']);
-            $expired->addFieldToFilter('expiration_date', ['notnull' => true]);
-            $expired->addFieldToFilter('expiration_date', ['lt' => $now]);
+            // Batch delete expired coupons
+            $expiredCount = (int)$connection->delete($tableName, [
+                'rule_id = ?' => $ruleId,
+                'code LIKE ?' => $prefix . '-%',
+                'expiration_date IS NOT NULL',
+                'expiration_date < ?' => $now,
+            ]);
 
-            $expiredCount = $expired->getSize();
-            foreach ($expired as $coupon) {
-                $coupon->delete();
-            }
-
-            // Delete used coupons older than retention period
-            $used = $this->couponCollectionFactory->create();
-            $used->addFieldToFilter('rule_id', $ruleId);
-            $used->addFieldToFilter('code', ['like' => $prefix . '-%']);
-            $used->addFieldToFilter('times_used', ['gteq' => 1]);
-            $used->addFieldToFilter('created_at', ['lt' => $retentionCutoff]);
-
-            $usedCount = $used->getSize();
-            foreach ($used as $coupon) {
-                $coupon->delete();
-            }
+            // Batch delete used coupons older than retention period
+            $usedCount = (int)$connection->delete($tableName, [
+                'rule_id = ?' => $ruleId,
+                'code LIKE ?' => $prefix . '-%',
+                'times_used >= ?' => 1,
+                'created_at < ?' => $retentionCutoff,
+            ]);
 
             $deleted = $expiredCount + $usedCount;
             $totalDeleted += $deleted;
