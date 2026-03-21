@@ -125,6 +125,27 @@ class Recover implements HttpGetActionInterface
                 'email' => $email
             ]);
 
+            // Auto-apply coupon if present in recovery URL
+            $couponCode = $this->request->getParam('coupon');
+            if ($couponCode && is_string($couponCode)) {
+                try {
+                    $quote->setCouponCode($couponCode);
+                    $quote->collectTotals();
+                    $this->cartRepository->save($quote);
+                    $this->logger->info('Bento coupon auto-applied via recovery link', [
+                        'quote_id' => $quoteId,
+                        'coupon' => $couponCode
+                    ]);
+                } catch (\Exception $e) {
+                    // Don't block cart recovery if coupon fails
+                    $this->logger->warning('Bento coupon auto-apply failed', [
+                        'quote_id' => $quoteId,
+                        'coupon' => $couponCode,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
             return $redirect->setPath('checkout/cart', $cartRedirectParams);
 
         } catch (\InvalidArgumentException $e) {
