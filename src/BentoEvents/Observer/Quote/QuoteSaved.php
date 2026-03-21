@@ -50,24 +50,33 @@ class QuoteSaved implements ObserverInterface
 
         $storeId = (int)$quote->getStoreId();
 
+        $abandonedCartEnabled = $this->config->isAbandonedCartEnabled($storeId);
+
         if (!$this->isQuoteBasicEligible($quote)) {
+            if ($abandonedCartEnabled) {
+                $this->scheduler->cancelPending((int)$quote->getId());
+            }
             return;
         }
 
         // Abandoned cart scheduling
-        if ($this->config->isAbandonedCartEnabled($storeId) && $this->isAbandonedCartEligible($quote, $storeId)) {
-            try {
-                $this->scheduler->scheduleCheck($quote);
-                $this->config->debug('Abandoned cart check scheduled', [
-                    'quote_id' => $quote->getId(),
-                    'email' => $quote->getCustomerEmail(),
-                    'grand_total' => $quote->getGrandTotal()
-                ], $storeId);
-            } catch (\Exception $e) {
-                $this->logger->error('Failed to schedule abandoned cart check', [
-                    'quote_id' => $quote->getId(),
-                    'error' => $e->getMessage()
-                ]);
+        if ($abandonedCartEnabled) {
+            if ($this->isAbandonedCartEligible($quote, $storeId)) {
+                try {
+                    $this->scheduler->scheduleCheck($quote);
+                    $this->config->debug('Abandoned cart check scheduled', [
+                        'quote_id' => $quote->getId(),
+                        'email' => $quote->getCustomerEmail(),
+                        'grand_total' => $quote->getGrandTotal()
+                    ], $storeId);
+                } catch (\Exception $e) {
+                    $this->logger->error('Failed to schedule abandoned cart check', [
+                        'quote_id' => $quote->getId(),
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            } else {
+                $this->scheduler->cancelPending((int)$quote->getId());
             }
         }
 

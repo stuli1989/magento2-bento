@@ -273,6 +273,27 @@ class Scheduler
     }
 
     /**
+     * Cancel a pending schedule when a quote becomes ineligible.
+     */
+    public function cancelPending(int $quoteId): void
+    {
+        $connection = $this->resourceConnection->getConnection();
+        $tableName = $this->resourceConnection->getTableName(self::TABLE_NAME);
+
+        $connection->update(
+            $tableName,
+            [
+                'status' => 'ineligible',
+                'processed_at' => $this->dateTime->gmtDate(),
+            ],
+            [
+                'quote_id = ?' => $quoteId,
+                'status = ?' => 'pending',
+            ]
+        );
+    }
+
+    /**
      * Clean up old scheduled entries
      */
     public function cleanup(int $daysOld = 7): int
@@ -289,7 +310,7 @@ class Scheduler
             $tableName,
             [
                 'scheduled_at < ?' => $cutoff,
-                'status IN (?)' => ['sent', 'converted', 'ordered', 'not_found', 'no_email', 'duplicate_window']
+                'status IN (?)' => ['sent', 'converted', 'ordered', 'not_found', 'no_email', 'duplicate_window', 'ineligible']
             ]
         );
     }

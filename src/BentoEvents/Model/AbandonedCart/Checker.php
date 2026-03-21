@@ -63,9 +63,15 @@ class Checker
             return false;
         }
 
+        // Re-verify eligibility — quote may have changed since scheduling
+        if (!$this->isQuoteEligible($quote, $storeId)) {
+            $this->scheduler->markProcessed($quoteId, 'ineligible');
+            return false;
+        }
+
         // Check if quote was modified since scheduled (customer returned)
         if ($originalUpdatedAt && $quote->getUpdatedAt() !== $originalUpdatedAt) {
-            // Reschedule with new timestamp
+            // Only reschedule if still eligible (checked above)
             $this->scheduler->scheduleCheck($quote);
             return false;
         }
@@ -144,6 +150,28 @@ class Checker
             $this->scheduler->markProcessed($quoteId, 'error');
             return false;
         }
+    }
+
+    /**
+     * Verify quote still meets abandoned cart eligibility criteria.
+     */
+    private function isQuoteEligible($quote, int $storeId): bool
+    {
+        if ($quote->getItemsCount() < 1) {
+            return false;
+        }
+
+        $minValue = $this->config->getAbandonedCartMinValue($storeId);
+        if ((float)$quote->getGrandTotal() < $minValue) {
+            return false;
+        }
+
+        $excludedGroups = $this->config->getExcludedCustomerGroups($storeId);
+        if (!empty($excludedGroups) && in_array((int)$quote->getCustomerGroupId(), $excludedGroups)) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
