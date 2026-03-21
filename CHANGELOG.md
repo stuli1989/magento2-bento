@@ -1,10 +1,61 @@
 # Changelog — Bento Integration Plugin
 
-All changes since initial release (baseline: commit `5d3d19c`).
+All notable changes to this project are documented below. This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## 1. Outbox Fallback System (New Feature)
+## [1.2.2] — 2026-03-21
+
+### Fixed
+- Enforce abandoned cart eligibility at every stage of the lifecycle
+- Use `processed_at` for abandoned cart stuck-processing detection
+- JSON-decode serialized arguments in `ServiceDataResolver` before extracting entity ID
+- Use correct Magento interface methods in Refund, Shipment, and Order services
+- Enable database persistence for Bento event subscriptions
+- Use `updated_at` for outbox stuck-processing detection to prevent race condition
+- Use correct Magento APIs for discount and currency in abandoned cart data
+
+---
+
+## [1.2.1] — 2026-03-21
+
+### Security
+- Prevent cross-store cart recovery IDOR vulnerability — recovery links are now validated against the originating store to block unauthorized access
+
+---
+
+## [1.2.0] — 2026-03-21
+
+### Added
+- Server-side `$checkoutStarted` event via `CheckoutService` and `QuoteSaved` observer
+- `EventDeduplicator` service and `artlounge_bento_event_dedup` table to prevent duplicate event processing
+- Event dedup table cleanup integrated into `ProcessAbandonedCarts` cron
+
+### Changed
+- Checkout template stripped to identification only — event tracking moved entirely server-side
+
+---
+
+## [1.1.0] — 2026-03-20
+
+### Added
+- `CouponService` for generating unique coupon codes in abandoned cart recovery emails
+- Coupon admin configuration fields and cart price rule source model
+- Coupon data forwarded through `BentoClient` event details
+- Auto-apply coupon code from recovery link URL
+- Daily cron to cleanup expired Bento coupons
+
+---
+
+## [1.0.0] — 2026-03-20
+
+Initial release. See feature history below for pre-release development details.
+
+---
+
+## Pre-release Feature History
+
+### Outbox Fallback System
 
 | Commit | Description |
 |--------|-------------|
@@ -22,7 +73,7 @@ All changes since initial release (baseline: commit `5d3d19c`).
 
 ---
 
-## 2. Dead-Letter Improvements
+### Dead-Letter Improvements
 
 | Commit | Description |
 |--------|-------------|
@@ -33,7 +84,7 @@ All changes since initial release (baseline: commit `5d3d19c`).
 
 ---
 
-## 3. Server-Side Pipeline Fixes
+### Server-Side Pipeline Fixes
 
 | Commit | Description |
 |--------|-------------|
@@ -46,7 +97,7 @@ All changes since initial release (baseline: commit `5d3d19c`).
 
 ---
 
-## 4. Client-Side Tracking Fixes
+### Client-Side Tracking Fixes
 
 | Commit | Description |
 |--------|-------------|
@@ -64,7 +115,7 @@ All changes since initial release (baseline: commit `5d3d19c`).
 
 ---
 
-## 5. Subscriber & Customer Fixes
+### Subscriber & Customer Fixes
 
 | Commit | Description |
 |--------|-------------|
@@ -75,7 +126,7 @@ All changes since initial release (baseline: commit `5d3d19c`).
 
 ---
 
-## 6. Cart Lifecycle & Abandoned Cart
+### Cart Lifecycle & Abandoned Cart
 
 | Commit | Description |
 |--------|-------------|

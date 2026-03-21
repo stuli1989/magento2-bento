@@ -3,7 +3,6 @@
     "description": "Magento 2 integration with Bento email marketing platform via async event queues",
     "type": "library",
     "license": "MIT",
-    "version": "1.0.0",
     "keywords": ["magento2", "bento", "email", "marketing", "async", "events", "queue"],
     "homepage": "https://github.com/stuli1989/magento2-bento",
     "require": {
