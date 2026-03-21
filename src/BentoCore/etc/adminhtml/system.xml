@@ -330,6 +330,45 @@
                         <field id="prevent_duplicates">1</field>
                     </depends>
                 </field>
+
+                <field id="coupon_enabled" translate="label comment" type="select" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Coupon Generation</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Generate a unique coupon code per abandoned cart event</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="coupon_rule_id" translate="label comment" type="select" sortOrder="110" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Cart Price Rule</label>
+                    <source_model>ArtLounge\BentoCore\Model\Config\Source\CartPriceRule</source_model>
+                    <comment>Select the Cart Price Rule to generate coupons against. The rule must have coupon type "Specific Coupon".</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                        <field id="coupon_enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="coupon_prefix" translate="label comment" type="text" sortOrder="120" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Coupon Code Prefix</label>
+                    <comment>Prefix for generated coupon codes (e.g., BENTO-A7X2K9)</comment>
+                    <validate>validate-alphanum-with-spaces</validate>
+                    <depends>
+                        <field id="enabled">1</field>
+                        <field id="coupon_enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="coupon_lifetime_days" translate="label comment" type="text" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Coupon Lifetime (Days)</label>
+                    <comment>Days until generated coupons expire (default: 7)</comment>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <depends>
+                        <field id="enabled">1</field>
+                        <field id="coupon_enabled">1</field>
+                    </depends>
+                </field>
             </group>
 
             <!-- Client-Side Tracking Group -->
