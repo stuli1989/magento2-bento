@@ -49,4 +49,9 @@
         <service class="ArtLounge\BentoEvents\Service\AbandonedCartService" method="getAbandonedCartData"/>
     </async_event>
 
+    <!-- Checkout Events -->
+    <async_event name="bento.checkout.started">
+        <service class="ArtLounge\BentoEvents\Service\CheckoutService" method="getCheckoutStartedData"/>
+    </async_event>
+
 </config>

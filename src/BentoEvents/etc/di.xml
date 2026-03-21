@@ -153,6 +153,11 @@
             <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
         </arguments>
     </type>
+    <type name="ArtLounge\BentoEvents\Service\CheckoutService">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
     <type name="ArtLounge\BentoEvents\Controller\Cart\Recover">
         <arguments>
             <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>

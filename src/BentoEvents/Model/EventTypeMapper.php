@@ -35,6 +35,9 @@ class EventTypeMapper
 
         // Abandoned cart events
         'bento.cart.abandoned' => '$cart_abandoned',
+
+        // Checkout events
+        'bento.checkout.started' => '$checkoutStarted',
     ];
 
     /**
