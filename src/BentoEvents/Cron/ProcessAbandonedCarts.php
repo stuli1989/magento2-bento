@@ -12,6 +12,7 @@ namespace ArtLounge\BentoEvents\Cron;
 use ArtLounge\BentoCore\Api\ConfigInterface;
 use ArtLounge\BentoEvents\Model\AbandonedCart\Checker;
 use ArtLounge\BentoEvents\Model\AbandonedCart\Scheduler;
+use ArtLounge\BentoEvents\Model\EventDeduplicator;
 use Psr\Log\LoggerInterface;
 
 class ProcessAbandonedCarts
@@ -22,7 +23,8 @@ class ProcessAbandonedCarts
         private readonly ConfigInterface $config,
         private readonly Scheduler $scheduler,
         private readonly Checker $checker,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly EventDeduplicator $eventDeduplicator
     ) {
     }
 
@@ -65,6 +67,14 @@ class ProcessAbandonedCarts
             if ($cleaned > 0) {
                 $this->logger->debug('Cleaned up old abandoned cart entries', [
                     'count' => $cleaned
+                ]);
+            }
+
+            // Cleanup old event dedup entries
+            $dedupCleaned = $this->eventDeduplicator->cleanup(30);
+            if ($dedupCleaned > 0) {
+                $this->logger->debug('Cleaned up old event dedup entries', [
+                    'count' => $dedupCleaned
                 ]);
             }
 
