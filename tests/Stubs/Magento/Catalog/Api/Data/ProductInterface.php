@@ -16,4 +16,5 @@ interface ProductInterface
     public function getAttributeText($key);
     public function getSpecialPrice();
     public function getPrice();
+    public function getImage();
 }

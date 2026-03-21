@@ -10,4 +10,5 @@ interface StoreInterface
     public function getCode();
     public function getWebsiteId();
     public function getCurrentCurrencyCode();
+    public function getBaseUrl($type = 'link', $secure = null);
 }

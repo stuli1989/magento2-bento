@@ -205,7 +205,7 @@ class AbandonedCartServiceTest extends TestCase
 
         $item = $result['items'][0];
         $this->assertSame(1, $item['item_id']);
-        $this->assertSame(10, $item['product_id']);
+        $this->assertSame('10', $item['product_id']);
         $this->assertSame('SKU', $item['sku']);
         $this->assertSame('Product', $item['name']);
         $this->assertSame(1, $item['qty']);
