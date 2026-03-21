@@ -39,7 +39,7 @@ class EventDeduplicator
             // 1 = inserted (first time), 0 = duplicate (already sent)
             return $affectedRows > 0;
         } catch (\Exception $e) {
-            $this->logger->debug('Event dedup insert failed', [
+            $this->logger->warning('Event dedup insert failed', [
                 'quote_id' => $quoteId,
                 'event_name' => $eventName,
                 'error' => $e->getMessage()
@@ -48,9 +48,6 @@ class EventDeduplicator
         }
     }
 
-    /**
-     * Cleanup old dedup entries.
-     */
     public function cleanup(int $maxAgeDays = 30): int
     {
         $connection = $this->resourceConnection->getConnection();

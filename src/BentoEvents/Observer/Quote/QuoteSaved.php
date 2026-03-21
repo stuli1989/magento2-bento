@@ -2,7 +2,7 @@
 /**
  * Quote Saved Observer
  *
- * Schedules abandoned cart check when quote is saved.
+ * Schedules abandoned cart check and publishes checkout started event when quote is saved.
  */
 
 declare(strict_types=1);
@@ -23,6 +23,10 @@ use Psr\Log\LoggerInterface;
 
 class QuoteSaved implements ObserverInterface
 {
+    private const EVENT_NAME = 'bento.checkout.started';
+    private const QUEUE_TOPIC = 'event.trigger';
+    private const CHECKOUT_EVENT_TYPE = '$checkoutStarted';
+
     public function __construct(
         private readonly ConfigInterface $config,
         private readonly Scheduler $scheduler,
@@ -46,8 +50,12 @@ class QuoteSaved implements ObserverInterface
 
         $storeId = (int)$quote->getStoreId();
 
-        // Abandoned cart scheduling (existing behavior, unchanged)
-        if ($this->config->isAbandonedCartEnabled($storeId) && $this->isQuoteEligible($quote, $storeId)) {
+        if (!$this->isQuoteBasicEligible($quote)) {
+            return;
+        }
+
+        // Abandoned cart scheduling
+        if ($this->config->isAbandonedCartEnabled($storeId) && $this->isAbandonedCartEligible($quote, $storeId)) {
             try {
                 $this->scheduler->scheduleCheck($quote);
                 $this->config->debug('Abandoned cart check scheduled', [
@@ -64,13 +72,17 @@ class QuoteSaved implements ObserverInterface
         }
 
         // Checkout started event (independent of abandoned cart config)
-        if ($this->isCheckoutContext() && $this->isCheckoutEligible($quote, $storeId)) {
+        if ($this->isCheckoutContext()
+            && $this->config->isEnabled($storeId)
+            && $this->config->isTrackCheckoutEnabled($storeId)
+            && !empty($quote->getCustomerEmail())
+        ) {
             $quoteId = (int)$quote->getId();
-            $inserted = $this->eventDeduplicator->tryMarkSent($quoteId, '$checkoutStarted');
+            $inserted = $this->eventDeduplicator->tryMarkSent($quoteId, self::CHECKOUT_EVENT_TYPE);
             if ($inserted) {
+                $arguments = $this->serializer->serialize(['id' => $quoteId]);
                 try {
-                    $arguments = $this->serializer->serialize(['id' => $quoteId]);
-                    $this->publisher->publish('event.trigger', ['bento.checkout.started', $arguments]);
+                    $this->publisher->publish(self::QUEUE_TOPIC, [self::EVENT_NAME, $arguments]);
 
                     $this->config->debug('Checkout started event queued', [
                         'quote_id' => $quoteId,
@@ -80,41 +92,36 @@ class QuoteSaved implements ObserverInterface
                         'quote_id' => $quoteId,
                         'error' => $e->getMessage()
                     ]);
-                    $this->outboxWriter->save('bento.checkout.started', $arguments ?? '{}', $storeId);
+                    $this->outboxWriter->save(self::EVENT_NAME, $arguments, $storeId);
                 }
             }
         }
     }
 
     /**
-     * Check if quote is eligible for abandoned cart tracking
+     * Shared guards: active quote with items.
      */
-    private function isQuoteEligible(Quote $quote, int $storeId): bool
+    private function isQuoteBasicEligible(Quote $quote): bool
     {
-        // Must be active
-        if (!$quote->getIsActive()) {
-            return false;
-        }
+        return $quote->getIsActive() && $quote->getItemsCount() >= 1;
+    }
 
-        // Must have items
-        if ($quote->getItemsCount() < 1) {
-            return false;
-        }
-
-        // Check email requirement
+    /**
+     * Abandoned-cart-specific guards (min value, email requirement, excluded groups).
+     */
+    private function isAbandonedCartEligible(Quote $quote, int $storeId): bool
+    {
         if ($this->config->isAbandonedCartEmailRequired($storeId)) {
             if (empty($quote->getCustomerEmail())) {
                 return false;
             }
         }
 
-        // Check minimum value
         $minValue = $this->config->getAbandonedCartMinValue($storeId);
         if ((float)$quote->getGrandTotal() < $minValue) {
             return false;
         }
 
-        // Check excluded customer groups
         $excludedGroups = $this->config->getExcludedCustomerGroups($storeId);
         if (!empty($excludedGroups) && in_array((int)$quote->getCustomerGroupId(), $excludedGroups)) {
             return false;
@@ -123,9 +130,6 @@ class QuoteSaved implements ObserverInterface
         return true;
     }
 
-    /**
-     * Detect if the current request is in a checkout context.
-     */
     private function isCheckoutContext(): bool
     {
         try {
@@ -134,7 +138,6 @@ class QuoteSaved implements ObserverInterface
                 return true;
             }
 
-            // REST API checkout calls (shipping-information, payment-information, etc.)
             if ($moduleName === 'rest' || $moduleName === 'webapi_rest') {
                 $uri = (string)$this->request->getRequestUri();
                 if (str_contains($uri, '/carts/') || str_contains($uri, '/guest-carts/')) {
@@ -146,34 +149,5 @@ class QuoteSaved implements ObserverInterface
         } catch (\Exception $e) {
             return false;
         }
-    }
-
-    /**
-     * Check if quote is eligible for checkout tracking.
-     * Lighter guards than abandoned cart — no min value or excluded groups.
-     */
-    private function isCheckoutEligible(Quote $quote, int $storeId): bool
-    {
-        if (!$this->config->isEnabled($storeId)) {
-            return false;
-        }
-
-        if (!$this->config->isTrackCheckoutEnabled($storeId)) {
-            return false;
-        }
-
-        if (!$quote->getIsActive()) {
-            return false;
-        }
-
-        if ($quote->getItemsCount() < 1) {
-            return false;
-        }
-
-        if (empty($quote->getCustomerEmail())) {
-            return false;
-        }
-
-        return true;
     }
 }

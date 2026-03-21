@@ -8,6 +8,8 @@ use Psr\Log\LoggerInterface;
 
 class CheckoutService
 {
+    private const EVENT_TYPE = '$checkoutStarted';
+
     public function __construct(
         private readonly AbandonedCartService $abandonedCartService,
         private readonly CartRepositoryInterface $cartRepository,
@@ -30,7 +32,7 @@ class CheckoutService
             $quote = $this->cartRepository->get($id);
             $data = $this->abandonedCartService->formatAbandonedCartData($quote);
 
-            $data['event_type'] = '$checkoutStarted';
+            $data['event_type'] = self::EVENT_TYPE;
 
             // Remove abandoned-cart-specific field
             unset($data['cart']['abandoned_duration_minutes']);
