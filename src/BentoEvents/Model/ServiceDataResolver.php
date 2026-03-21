@@ -152,14 +152,9 @@ class ServiceDataResolver
     /**
      * Extract entity ID from flattened data based on event type.
      *
-     * ServiceOutputProcessor strips keys, so the structure is positional.
-     * Each service returns a different structure:
-     * - AbandonedCartService: [event_type, cart_id(int), cart{}, financials{}, items[], customer{}, ...]
-     * - OrderService (formatOrderData): [event_type, order{id,increment_id,...}, financials{}, ...]
-     * - CustomerService: [event_type, customer{customer_id,...}, ...]
-     * - NewsletterService: [event_type, subscriber{subscriber_id,...}, ...]
-     * - ShipmentService: [event_type, shipment{shipment_id,...}, ...] (merged with order data)
-     * - RefundService: [event_type, refund{creditmemo_id,...}, ...] (merged with order data)
+     * Observers publish [eventName, jsonArguments] where jsonArguments is a
+     * serialized JSON string like '{"id":123}' or '{"increment_id":"000000123"}'.
+     * The second element must be JSON-decoded before extracting the ID key.
      *
      * @return int|string|null
      */
@@ -170,52 +165,26 @@ class ServiceDataResolver
             return null;
         }
 
-        return match ($eventName) {
-            // cart_id is a scalar at index 1
-            'bento.cart.abandoned' => (int)$secondElement,
-
-            // order{} array at index 1 — extract order.id or order.increment_id
-            'bento.order.placed' => is_array($secondElement)
-                ? (string)($secondElement['increment_id'] ?? '')
-                : (string)$secondElement,
-            'bento.order.cancelled' => is_array($secondElement)
-                ? (int)($secondElement['id'] ?? 0)
-                : (int)$secondElement,
-
-            // These events merge order data first, so order{} is at index 1
-            // and shipment{}/refund{} follows. We need order.id to look up the
-            // shipment/refund, but the service methods take shipment_id/creditmemo_id.
-            // Search for the shipment/refund sub-array deeper in the flattened data.
-            'bento.order.shipped' => $this->findNestedId($flatData, 'shipment_id'),
-            'bento.order.refunded' => $this->findNestedId($flatData, 'creditmemo_id'),
-
-            // customer{} at index 1
-            'bento.customer.created',
-            'bento.customer.updated' => is_array($secondElement)
-                ? (int)($secondElement['customer_id'] ?? 0)
-                : (int)$secondElement,
-
-            // subscriber{} at index 1
-            'bento.newsletter.subscribed',
-            'bento.newsletter.unsubscribed' => is_array($secondElement)
-                ? (int)($secondElement['subscriber_id'] ?? 0)
-                : (int)$secondElement,
-
-            default => null,
-        };
-    }
-
-    /**
-     * Search flattened array for a sub-array containing the given key
-     */
-    private function findNestedId(array $flatData, string $key): ?int
-    {
-        foreach ($flatData as $element) {
-            if (is_array($element) && isset($element[$key])) {
-                return (int)$element[$key];
+        // Arguments arrive as a JSON string from observer serialization — decode first
+        if (is_string($secondElement)) {
+            $decoded = json_decode($secondElement, true);
+            if (is_array($decoded)) {
+                $secondElement = $decoded;
             }
         }
-        return null;
+
+        // After decoding: ['id' => N] for most events, ['increment_id' => 'N'] for order.placed
+        if (is_array($secondElement)) {
+            return match ($eventName) {
+                'bento.order.placed' => (string)($secondElement['increment_id'] ?? ''),
+                default => ($config['id_type'] === 'string')
+                    ? (string)($secondElement['id'] ?? '')
+                    : (int)($secondElement['id'] ?? 0),
+            };
+        }
+
+        // Scalar fallback (pre-decoded plain value)
+        return ($config['id_type'] === 'string') ? (string)$secondElement : (int)$secondElement;
     }
 
     /**
