@@ -10,13 +10,14 @@ namespace ArtLounge\BentoEvents\Test\Unit\Service;
 use ArtLounge\BentoCore\Api\ConfigInterface;
 use ArtLounge\BentoEvents\Model\RecoveryToken;
 use ArtLounge\BentoEvents\Service\AbandonedCartService;
+use ArtLounge\BentoEvents\Service\CouponService;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Api\Data\ProductInterface;
-use Magento\Catalog\Helper\Image as ImageHelper;
 use Magento\Framework\UrlInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
 use Magento\Quote\Api\Data\CartInterface;
 use Magento\Quote\Api\Data\CartItemInterface;
+use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -26,30 +27,36 @@ class AbandonedCartServiceTest extends TestCase
     private AbandonedCartService $service;
     private MockObject $cartRepository;
     private MockObject $productRepository;
-    private MockObject $imageHelper;
+    private MockObject $storeManager;
     private MockObject $config;
     private MockObject $recoveryToken;
     private MockObject $urlBuilder;
     private MockObject $logger;
+    private MockObject $couponService;
 
     protected function setUp(): void
     {
         $this->cartRepository = $this->createMock(CartRepositoryInterface::class);
         $this->productRepository = $this->createMock(ProductRepositoryInterface::class);
-        $this->imageHelper = $this->createMock(ImageHelper::class);
+        $this->storeManager = $this->createMock(StoreManagerInterface::class);
         $this->config = $this->createMock(ConfigInterface::class);
         $this->recoveryToken = $this->createMock(RecoveryToken::class);
         $this->urlBuilder = $this->createMock(UrlInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
 
+        $this->couponService = $this->createMock(CouponService::class);
+        $this->couponService->method('generateForCart')
+            ->willReturn(null);
+
         $this->service = new AbandonedCartService(
             $this->cartRepository,
             $this->productRepository,
-            $this->imageHelper,
+            $this->storeManager,
             $this->config,
             $this->recoveryToken,
             $this->urlBuilder,
-            $this->logger
+            $this->logger,
+            $this->couponService
         );
     }
 
@@ -63,7 +70,7 @@ class AbandonedCartServiceTest extends TestCase
 
         $result = $this->service->getAbandonedCartData(10);
 
-        $this->assertSame('$abandoned', $result['event_type']);
+        $this->assertSame('$cart_abandoned', $result['event_type']);
         $this->assertSame('test@example.com', $result['customer']['email']);
         $this->assertCount(1, $result['items']);
     }
@@ -205,7 +212,7 @@ class AbandonedCartServiceTest extends TestCase
         $this->assertSame(10000, $item['price']);
         $this->assertSame(10000, $item['row_total']);
         $this->assertSame('https://example.com/product', $item['product_url']);
-        $this->assertSame('https://example.com/image.jpg', $item['product_image_url']);
+        $this->assertSame('https://example.com/media/catalog/product/i/m/image.jpg', $item['product_image_url']);
     }
 
     public function testFormatAbandonedCartDataIncludesBrandWhenConfigured(): void
@@ -270,13 +277,13 @@ class AbandonedCartServiceTest extends TestCase
         $item->method('getRowTotal')->willReturn(100.0);
 
         $product->method('getProductUrl')->willReturn('https://example.com/product');
+        $product->method('getImage')->willReturn('/i/m/image.jpg');
 
         $this->productRepository->method('getById')->willReturn($product);
 
-        $image = $this->createMock(ImageHelper::class);
-        $image->method('init')->willReturnSelf();
-        $image->method('getUrl')->willReturn('https://example.com/image.jpg');
-        $this->imageHelper->method('init')->willReturn($image);
+        $store = $this->createMock(\Magento\Store\Api\Data\StoreInterface::class);
+        $store->method('getBaseUrl')->willReturn('https://example.com/media/');
+        $this->storeManager->method('getStore')->willReturn($store);
 
         $quote->method('getStoreId')->willReturn(1);
         $quote->method('getId')->willReturn(10);
