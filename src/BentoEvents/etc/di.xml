@@ -143,6 +143,11 @@
             <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
         </arguments>
     </type>
+    <type name="ArtLounge\BentoEvents\Cron\CouponCleanup">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
     <type name="ArtLounge\BentoEvents\Controller\Cart\Recover">
         <arguments>
             <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>

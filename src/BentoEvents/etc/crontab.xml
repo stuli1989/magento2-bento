@@ -34,5 +34,12 @@
              method="execute">
             <schedule>*/5 * * * *</schedule>
         </job>
+
+        <!-- Cleanup expired/used Bento coupons daily at 4 AM -->
+        <job name="artlounge_bento_coupon_cleanup"
+             instance="ArtLounge\BentoEvents\Cron\CouponCleanup"
+             method="execute">
+            <schedule>0 4 * * *</schedule>
+        </job>
     </group>
 </config>
