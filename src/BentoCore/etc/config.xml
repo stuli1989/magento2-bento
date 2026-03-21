@@ -59,6 +59,9 @@
                 <include_recovery_url>1</include_recovery_url>
                 <prevent_duplicates>1</prevent_duplicates>
                 <duplicate_window>24</duplicate_window>
+                <coupon_enabled>0</coupon_enabled>
+                <coupon_prefix>BENTO</coupon_prefix>
+                <coupon_lifetime_days>7</coupon_lifetime_days>
             </abandoned_cart>
 
             <!-- Client-Side Tracking -->

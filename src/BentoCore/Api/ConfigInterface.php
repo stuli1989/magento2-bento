@@ -57,6 +57,12 @@ interface ConfigInterface
     public function preventDuplicates(?int $storeId = null): bool;
     public function getAbandonedCartDuplicateWindow(?int $storeId = null): int;
 
+    // Abandoned Cart Coupon Settings
+    public function isCouponEnabled(?int $storeId = null): bool;
+    public function getCouponRuleId(?int $storeId = null): ?int;
+    public function getCouponPrefix(?int $storeId = null): string;
+    public function getCouponLifetimeDays(?int $storeId = null): int;
+
     // Tracking Settings
     public function isTrackingEnabled(?int $storeId = null): bool;
     public function isTrackViewsEnabled(?int $storeId = null): bool;

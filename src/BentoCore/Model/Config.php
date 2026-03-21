@@ -64,6 +64,12 @@ class Config implements ConfigInterface
     private const XML_PATH_ABANDONED_PREVENT_DUPLICATES = 'abandoned_cart/prevent_duplicates';
     private const XML_PATH_ABANDONED_DUPLICATE_WINDOW = 'abandoned_cart/duplicate_window';
 
+    // Coupon paths
+    private const XML_PATH_COUPON_ENABLED = 'abandoned_cart/coupon_enabled';
+    private const XML_PATH_COUPON_RULE_ID = 'abandoned_cart/coupon_rule_id';
+    private const XML_PATH_COUPON_PREFIX = 'abandoned_cart/coupon_prefix';
+    private const XML_PATH_COUPON_LIFETIME = 'abandoned_cart/coupon_lifetime_days';
+
     // Tracking paths
     private const XML_PATH_TRACKING_ENABLED = 'tracking/enabled';
     private const XML_PATH_TRACK_VIEWS = 'tracking/track_views';
@@ -280,6 +286,34 @@ class Config implements ConfigInterface
     public function getAbandonedCartDuplicateWindow(?int $storeId = null): int
     {
         return (int)($this->getValue(self::XML_PATH_ABANDONED_DUPLICATE_WINDOW, $storeId) ?: 24);
+    }
+
+    // ===================
+    // Coupon Settings
+    // ===================
+
+    public function isCouponEnabled(?int $storeId = null): bool
+    {
+        return $this->isAbandonedCartEnabled($storeId)
+            && $this->getFlag(self::XML_PATH_COUPON_ENABLED, $storeId);
+    }
+
+    public function getCouponRuleId(?int $storeId = null): ?int
+    {
+        $value = $this->getValue(self::XML_PATH_COUPON_RULE_ID, $storeId);
+        return $value ? (int)$value : null;
+    }
+
+    public function getCouponPrefix(?int $storeId = null): string
+    {
+        $prefix = $this->getValue(self::XML_PATH_COUPON_PREFIX, $storeId);
+        // Strip non-alphanumeric characters for URL safety
+        return $prefix ? preg_replace('/[^A-Za-z0-9]/', '', $prefix) : 'BENTO';
+    }
+
+    public function getCouponLifetimeDays(?int $storeId = null): int
+    {
+        return (int)($this->getValue(self::XML_PATH_COUPON_LIFETIME, $storeId) ?: 7);
     }
 
     // ===================
