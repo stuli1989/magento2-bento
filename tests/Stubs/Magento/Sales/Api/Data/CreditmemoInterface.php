@@ -6,7 +6,6 @@ namespace Magento\Sales\Api\Data;
 
 interface CreditmemoInterface
 {
-    public function getOrder();
     public function getItems();
     public function getEntityId();
     public function getIncrementId();

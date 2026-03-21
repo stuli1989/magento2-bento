@@ -13,15 +13,16 @@ use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Api\Data\CategoryInterface;
 use Magento\Catalog\Api\Data\ProductInterface;
-use Magento\Catalog\Helper\Image as ImageHelper;
 use Magento\Customer\Api\GroupRepositoryInterface;
 use Magento\Customer\Api\Data\GroupInterface;
+use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Sales\Api\Data\OrderItemInterface;
 use Magento\Sales\Api\Data\OrderAddressInterface;
 use Magento\Sales\Api\Data\OrderPaymentInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Store\Api\Data\StoreInterface;
+use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -32,7 +33,7 @@ class OrderServiceTest extends TestCase
     private MockObject $orderRepository;
     private MockObject $productRepository;
     private MockObject $categoryRepository;
-    private MockObject $imageHelper;
+    private MockObject $storeManager;
     private MockObject $groupRepository;
     private MockObject $config;
     private MockObject $logger;
@@ -42,10 +43,17 @@ class OrderServiceTest extends TestCase
         $this->orderRepository = $this->createMock(OrderRepositoryInterface::class);
         $this->productRepository = $this->createMock(ProductRepositoryInterface::class);
         $this->categoryRepository = $this->createMock(CategoryRepositoryInterface::class);
-        $this->imageHelper = $this->createMock(ImageHelper::class);
         $this->groupRepository = $this->createMock(GroupRepositoryInterface::class);
         $this->config = $this->createMock(ConfigInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
+
+        $store = $this->createMock(StoreInterface::class);
+        $store->method('getId')->willReturn(1);
+        $store->method('getCode')->willReturn('default');
+        $store->method('getWebsiteId')->willReturn(1);
+        $store->method('getBaseUrl')->willReturn('https://example.com/media/');
+        $this->storeManager = $this->createMock(StoreManagerInterface::class);
+        $this->storeManager->method('getStore')->willReturn($store);
 
         $group = $this->createMock(GroupInterface::class);
         $group->method('getCode')->willReturn('General');
@@ -55,10 +63,11 @@ class OrderServiceTest extends TestCase
             $this->orderRepository,
             $this->productRepository,
             $this->categoryRepository,
-            $this->imageHelper,
+            $this->storeManager,
             $this->groupRepository,
             $this->config,
-            $this->logger
+            $this->logger,
+            $this->createMock(SearchCriteriaBuilder::class)
         );
     }
 
@@ -155,6 +164,7 @@ class OrderServiceTest extends TestCase
 
         $product = $this->createMock(ProductInterface::class);
         $product->method('getProductUrl')->willReturn('https://example.com/product');
+        $product->method('getImage')->willReturn('/i/m/image.jpg');
         $product->method('getCategoryIds')->willReturn([5]);
 
         $category = $this->createMock(CategoryInterface::class);
@@ -163,11 +173,6 @@ class OrderServiceTest extends TestCase
         $this->productRepository->method('getById')->willReturn($product);
         $this->categoryRepository->method('get')->willReturn($category);
 
-        $image = $this->createMock(ImageHelper::class);
-        $image->method('init')->willReturnSelf();
-        $image->method('getUrl')->willReturn('https://example.com/image.jpg');
-        $this->imageHelper->method('init')->willReturn($image);
-
         $this->config->method('getCurrencyMultiplier')->willReturn(100);
         $this->config->method('includeTaxInTotals')->willReturn(true);
         $this->config->method('includeProductImages')->willReturn(true);
@@ -175,7 +180,7 @@ class OrderServiceTest extends TestCase
 
         $result = $this->orderService->getOrderData(123);
 
-        $this->assertSame('https://example.com/image.jpg', $result['items'][0]['product_image_url']);
+        $this->assertSame('https://example.com/media/catalog/product/i/m/image.jpg', $result['items'][0]['product_image_url']);
         $this->assertSame(['Category'], $result['items'][0]['categories']);
     }
 
@@ -220,8 +225,8 @@ class OrderServiceTest extends TestCase
         $result = $this->orderService->getOrderData(123);
 
         $this->assertNull($result['items'][0]['product_url']);
-        $this->assertNull($result['items'][0]['product_image_url']);
-        $this->assertSame([], $result['items'][0]['categories']);
+        $this->assertArrayNotHasKey('product_image_url', $result['items'][0]);
+        $this->assertArrayNotHasKey('categories', $result['items'][0]);
     }
 
     public function testGetOrderDataThrowsExceptionOnFailure(): void
@@ -326,13 +331,9 @@ class OrderServiceTest extends TestCase
     public function testFormatOrderDataSkipsChildItems(): void
     {
         $order = $this->createMock(OrderInterface::class);
-        $store = $this->createMock(StoreInterface::class);
         $payment = $this->createMock(OrderPaymentInterface::class);
         $billingAddress = $this->createMock(OrderAddressInterface::class);
 
-        $store->method('getId')->willReturn(1);
-        $store->method('getCode')->willReturn('default');
-        $store->method('getWebsiteId')->willReturn(1);
         $payment->method('getMethod')->willReturn('checkmo');
         $payment->method('getMethodInstance')->willReturn($payment);
         $payment->method('getTitle')->willReturn('Check');
@@ -360,7 +361,6 @@ class OrderServiceTest extends TestCase
 
         $order->method('getEntityId')->willReturn(1);
         $order->method('getStoreId')->willReturn(1);
-        $order->method('getStore')->willReturn($store);
         $order->method('getIncrementId')->willReturn('000001');
         $order->method('getCreatedAt')->willReturn('2026-01-24');
         $order->method('getStatus')->willReturn('processing');
@@ -499,14 +499,9 @@ class OrderServiceTest extends TestCase
         $values = array_merge($defaults, $overrides);
 
         $order = $this->createMock(OrderInterface::class);
-        $store = $this->createMock(StoreInterface::class);
         $payment = $this->createMock(OrderPaymentInterface::class);
         $billingAddress = $this->createMock(OrderAddressInterface::class);
         $orderItem = $this->createMock(OrderItemInterface::class);
-
-        $store->method('getId')->willReturn($values['store_id']);
-        $store->method('getCode')->willReturn('default');
-        $store->method('getWebsiteId')->willReturn(1);
 
         $payment->method('getMethod')->willReturn('checkmo');
         $payment->method('getMethodInstance')->willReturn($payment);
@@ -532,7 +527,6 @@ class OrderServiceTest extends TestCase
 
         $order->method('getEntityId')->willReturn($values['entity_id']);
         $order->method('getStoreId')->willReturn($values['store_id']);
-        $order->method('getStore')->willReturn($store);
         $order->method('getIncrementId')->willReturn($values['increment_id']);
         $order->method('getCreatedAt')->willReturn($values['created_at']);
         $order->method('getStatus')->willReturn($values['status']);
@@ -567,14 +561,9 @@ class OrderServiceTest extends TestCase
     private function createOrderMock(int $orderId, int $storeId, array $itemIds): MockObject
     {
         $order = $this->createMock(OrderInterface::class);
-        $store = $this->createMock(StoreInterface::class);
         $payment = $this->createMock(OrderPaymentInterface::class);
         $billingAddress = $this->createMock(OrderAddressInterface::class);
         $orderItem = $this->createMock(OrderItemInterface::class);
-
-        $store->method('getId')->willReturn($storeId);
-        $store->method('getCode')->willReturn('default');
-        $store->method('getWebsiteId')->willReturn(1);
 
         $payment->method('getMethod')->willReturn('checkmo');
         $payment->method('getMethodInstance')->willReturn($payment);
@@ -600,7 +589,6 @@ class OrderServiceTest extends TestCase
 
         $order->method('getEntityId')->willReturn($orderId);
         $order->method('getStoreId')->willReturn($storeId);
-        $order->method('getStore')->willReturn($store);
         $order->method('getIncrementId')->willReturn('000000123');
         $order->method('getCreatedAt')->willReturn('2026-01-24 10:00:00');
         $order->method('getStatus')->willReturn('processing');

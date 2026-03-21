@@ -10,11 +10,12 @@ namespace ArtLounge\BentoEvents\Test\Unit\Service;
 use ArtLounge\BentoCore\Api\ConfigInterface;
 use ArtLounge\BentoEvents\Service\OrderService;
 use ArtLounge\BentoEvents\Service\ShipmentService;
-use Magento\Sales\Api\ShipmentRepositoryInterface;
+use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Sales\Api\Data\ShipmentInterface;
 use Magento\Sales\Api\Data\ShipmentItemInterface;
 use Magento\Sales\Api\Data\ShipmentTrackInterface;
-use Magento\Sales\Api\Data\OrderInterface;
+use Magento\Sales\Api\OrderRepositoryInterface;
+use Magento\Sales\Api\ShipmentRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -23,6 +24,7 @@ class ShipmentServiceTest extends TestCase
 {
     private ShipmentService $service;
     private MockObject $shipmentRepository;
+    private MockObject $orderRepository;
     private MockObject $orderService;
     private MockObject $config;
     private MockObject $logger;
@@ -30,12 +32,14 @@ class ShipmentServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->shipmentRepository = $this->createMock(ShipmentRepositoryInterface::class);
+        $this->orderRepository = $this->createMock(OrderRepositoryInterface::class);
         $this->orderService = $this->createMock(OrderService::class);
         $this->config = $this->createMock(ConfigInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
 
         $this->service = new ShipmentService(
             $this->shipmentRepository,
+            $this->orderRepository,
             $this->orderService,
             $this->config,
             $this->logger
@@ -49,7 +53,8 @@ class ShipmentServiceTest extends TestCase
         $track = $this->createMock(ShipmentTrackInterface::class);
         $item = $this->createMock(ShipmentItemInterface::class);
 
-        $shipment->method('getOrder')->willReturn($order);
+        $shipment->method('getOrderId')->willReturn(99);
+        $this->orderRepository->method('get')->with(99)->willReturn($order);
         $shipment->method('getTracks')->willReturn([$track]);
         $shipment->method('getItems')->willReturn([$item]);
         $shipment->method('getEntityId')->willReturn(10);

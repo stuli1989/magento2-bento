@@ -12,12 +12,14 @@ namespace ArtLounge\BentoEvents\Service;
 use ArtLounge\BentoCore\Api\ConfigInterface;
 use Magento\Sales\Api\CreditmemoRepositoryInterface;
 use Magento\Sales\Api\Data\CreditmemoInterface;
+use Magento\Sales\Api\OrderRepositoryInterface;
 use Psr\Log\LoggerInterface;
 
 class RefundService
 {
     public function __construct(
         private readonly CreditmemoRepositoryInterface $creditmemoRepository,
+        private readonly OrderRepositoryInterface $orderRepository,
         private readonly OrderService $orderService,
         private readonly ConfigInterface $config,
         private readonly LoggerInterface $logger
@@ -52,7 +54,7 @@ class RefundService
      */
     public function formatRefundData(CreditmemoInterface $creditmemo): array
     {
-        $order = $creditmemo->getOrder();
+        $order = $this->orderRepository->get((int)$creditmemo->getOrderId());
         $orderData = $this->orderService->formatOrderData($order);
         $storeId = (int)$order->getStoreId();
         $multiplier = $this->config->getCurrencyMultiplier($storeId);

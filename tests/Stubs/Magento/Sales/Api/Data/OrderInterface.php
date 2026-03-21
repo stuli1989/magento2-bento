@@ -8,7 +8,7 @@ interface OrderInterface
 {
     public function getEntityId();
     public function getStoreId();
-    public function getStore();
+    public function getQuoteId();
     public function getIncrementId();
     public function getCreatedAt();
     public function getStatus();

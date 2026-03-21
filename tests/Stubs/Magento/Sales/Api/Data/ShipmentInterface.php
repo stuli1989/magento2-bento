@@ -6,7 +6,6 @@ namespace Magento\Sales\Api\Data;
 
 interface ShipmentInterface
 {
-    public function getOrder();
     public function getTracks();
     public function getItems();
     public function getEntityId();

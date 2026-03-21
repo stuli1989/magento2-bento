@@ -200,8 +200,8 @@ class OrderService
 
             'store' => [
                 'store_id' => $storeId,
-                'store_code' => $order->getStore()->getCode(),
-                'website_id' => (int)$order->getStore()->getWebsiteId()
+                'store_code' => $this->storeManager->getStore($storeId)->getCode(),
+                'website_id' => (int)$this->storeManager->getStore($storeId)->getWebsiteId()
             ],
 
             'payment' => [

@@ -14,6 +14,7 @@ use Magento\Sales\Api\CreditmemoRepositoryInterface;
 use Magento\Sales\Api\Data\CreditmemoInterface;
 use Magento\Sales\Api\Data\CreditmemoItemInterface;
 use Magento\Sales\Api\Data\OrderInterface;
+use Magento\Sales\Api\OrderRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -22,6 +23,7 @@ class RefundServiceTest extends TestCase
 {
     private RefundService $service;
     private MockObject $creditmemoRepository;
+    private MockObject $orderRepository;
     private MockObject $orderService;
     private MockObject $config;
     private MockObject $logger;
@@ -29,12 +31,14 @@ class RefundServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->creditmemoRepository = $this->createMock(CreditmemoRepositoryInterface::class);
+        $this->orderRepository = $this->createMock(OrderRepositoryInterface::class);
         $this->orderService = $this->createMock(OrderService::class);
         $this->config = $this->createMock(ConfigInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
 
         $this->service = new RefundService(
             $this->creditmemoRepository,
+            $this->orderRepository,
             $this->orderService,
             $this->config,
             $this->logger
@@ -47,7 +51,8 @@ class RefundServiceTest extends TestCase
         $order = $this->createMock(OrderInterface::class);
         $item = $this->createMock(CreditmemoItemInterface::class);
 
-        $creditmemo->method('getOrder')->willReturn($order);
+        $creditmemo->method('getOrderId')->willReturn(99);
+        $this->orderRepository->method('get')->with(99)->willReturn($order);
         $creditmemo->method('getItems')->willReturn([$item]);
         $creditmemo->method('getEntityId')->willReturn(10);
         $creditmemo->method('getIncrementId')->willReturn('00001');

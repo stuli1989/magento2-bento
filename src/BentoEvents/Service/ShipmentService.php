@@ -10,14 +10,16 @@ declare(strict_types=1);
 namespace ArtLounge\BentoEvents\Service;
 
 use ArtLounge\BentoCore\Api\ConfigInterface;
-use Magento\Sales\Api\ShipmentRepositoryInterface;
 use Magento\Sales\Api\Data\ShipmentInterface;
+use Magento\Sales\Api\OrderRepositoryInterface;
+use Magento\Sales\Api\ShipmentRepositoryInterface;
 use Psr\Log\LoggerInterface;
 
 class ShipmentService
 {
     public function __construct(
         private readonly ShipmentRepositoryInterface $shipmentRepository,
+        private readonly OrderRepositoryInterface $orderRepository,
         private readonly OrderService $orderService,
         private readonly ConfigInterface $config,
         private readonly LoggerInterface $logger
@@ -52,7 +54,7 @@ class ShipmentService
      */
     public function formatShipmentData(ShipmentInterface $shipment): array
     {
-        $order = $shipment->getOrder();
+        $order = $this->orderRepository->get((int)$shipment->getOrderId());
         $orderData = $this->orderService->formatOrderData($order);
 
         // Get tracking information
