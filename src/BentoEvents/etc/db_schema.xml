@@ -85,4 +85,30 @@
         </index>
     </table>
 
+    <!-- Per-Quote Event Deduplication -->
+    <table name="artlounge_bento_event_sent" resource="default" engine="innodb"
+           comment="Bento Per-Quote Event Deduplication">
+        <column xsi:type="int" name="id" unsigned="true" nullable="false" identity="true"
+                comment="Record ID"/>
+        <column xsi:type="int" name="quote_id" unsigned="true" nullable="false"
+                comment="Quote ID"/>
+        <column xsi:type="varchar" name="event_name" nullable="false" length="64"
+                comment="Bento event name"/>
+        <column xsi:type="datetime" name="sent_at" nullable="false"
+                comment="When event was sent"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="UNQ_BENTO_EVENT_SENT_QUOTE_EVENT">
+            <column name="quote_id"/>
+            <column name="event_name"/>
+        </constraint>
+        <index referenceId="IDX_BENTO_EVENT_SENT_QUOTE_ID" indexType="btree">
+            <column name="quote_id"/>
+        </index>
+        <index referenceId="IDX_BENTO_EVENT_SENT_SENT_AT" indexType="btree">
+            <column name="sent_at"/>
+        </index>
+    </table>
+
 </schema>

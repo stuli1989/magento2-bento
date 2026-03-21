@@ -46,5 +46,21 @@
             "BENTO_OUTBOX_EVENT_NAME": true,
             "BENTO_OUTBOX_CREATED_AT": true
         }
+    },
+    "artlounge_bento_event_sent": {
+        "column": {
+            "id": true,
+            "quote_id": true,
+            "event_name": true,
+            "sent_at": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "UNQ_BENTO_EVENT_SENT_QUOTE_EVENT": true
+        },
+        "index": {
+            "IDX_BENTO_EVENT_SENT_QUOTE_ID": true,
+            "IDX_BENTO_EVENT_SENT_SENT_AT": true
+        }
     }
 }
