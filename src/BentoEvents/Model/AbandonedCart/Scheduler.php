@@ -222,14 +222,15 @@ class Scheduler
         $tableName = $this->resourceConnection->getTableName(self::TABLE_NAME);
         $now = $this->dateTime->gmtDate();
 
-        // Reset stuck entries (processing for > 10 min = likely crashed process)
+        // Reset stuck entries (processing for > 10 min = likely crashed process).
+        // Uses processed_at which is set when claiming rows for processing.
         $stuckThreshold = $this->dateTime->gmtDate('Y-m-d H:i:s', strtotime('-10 minutes'));
         $connection->update(
             $tableName,
             ['status' => 'pending'],
             [
                 'status = ?' => 'processing',
-                'scheduled_at <= ?' => $stuckThreshold,
+                'processed_at <= ?' => $stuckThreshold,
             ]
         );
 
@@ -248,9 +249,10 @@ class Scheduler
             return [];
         }
 
+        // Set processed_at when claiming so stuck detection uses actual processing start time
         $claimed = $connection->update(
             $tableName,
-            ['status' => 'processing'],
+            ['status' => 'processing', 'processed_at' => $now],
             [
                 'schedule_id IN (?)' => $ids,
                 'status = ?' => 'pending',
