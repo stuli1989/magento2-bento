@@ -57,17 +57,15 @@ class Processor
         $result = ['processed' => 0, 'failed' => 0, 'skipped' => 0];
 
         // Reset stuck entries (processing for > 10 min = likely crashed process).
-        // Uses created_at as a proxy since there's no processing_started_at column.
-        // Trade-off: freshly created entries stuck in 'processing' may wait up to
-        // STUCK_THRESHOLD extra minutes before reset. Acceptable for this edge case.
+        // Uses updated_at which is set when transitioning to 'processing'.
         $stuckThreshold = (new \DateTime("-" . self::STUCK_THRESHOLD_MINUTES . " minutes"))
             ->format('Y-m-d H:i:s');
         $resetCount = $connection->update(
             $table,
-            ['status' => self::STATUS_PENDING],
+            ['status' => self::STATUS_PENDING, 'updated_at' => $now],
             [
                 'status = ?' => self::STATUS_PROCESSING,
-                'created_at <= ?' => $stuckThreshold,
+                'updated_at <= ?' => $stuckThreshold,
             ]
         );
         if ($resetCount > 0) {
@@ -87,10 +85,11 @@ class Processor
         foreach ($entries as $entry) {
             $outboxId = (int)$entry['outbox_id'];
 
-            // Atomic claim: only proceed if we successfully transition to 'processing'
+            // Atomic claim: only proceed if we successfully transition to 'processing'.
+            // Sets updated_at so stuck-detection uses the actual processing start time.
             $claimed = $connection->update(
                 $table,
-                ['status' => self::STATUS_PROCESSING],
+                ['status' => self::STATUS_PROCESSING, 'updated_at' => $now],
                 [
                     'outbox_id = ?' => $outboxId,
                     'status = ?' => self::STATUS_PENDING,

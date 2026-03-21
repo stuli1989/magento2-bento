@@ -48,6 +48,7 @@ class Writer
                 'attempts' => 0,
                 'max_attempts' => self::MAX_ATTEMPTS,
                 'created_at' => $now,
+                'updated_at' => $now,
                 'next_retry_at' => $nextRetry,
             ]);
 
