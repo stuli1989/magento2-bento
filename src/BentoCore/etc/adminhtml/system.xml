@@ -340,10 +340,30 @@
                     </depends>
                 </field>
 
-                <field id="coupon_rule_id" translate="label comment" type="select" sortOrder="110" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Cart Price Rule</label>
-                    <source_model>ArtLounge\BentoCore\Model\Config\Source\CartPriceRule</source_model>
-                    <comment>Select the Cart Price Rule to generate coupons against. The rule must have coupon type "Specific Coupon".</comment>
+                <field id="coupon_discount_type" translate="label comment" type="select" sortOrder="105" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Discount Type</label>
+                    <source_model>ArtLounge\BentoCore\Model\Config\Source\DiscountType</source_model>
+                    <comment>Type of discount for recovery coupons</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                        <field id="coupon_enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="coupon_discount_amount" translate="label comment" type="text" sortOrder="107" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Discount Amount</label>
+                    <comment>Percentage (e.g., 10 for 10%% off) or fixed amount in store currency</comment>
+                    <validate>validate-number validate-greater-than-zero</validate>
+                    <depends>
+                        <field id="enabled">1</field>
+                        <field id="coupon_enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="coupon_min_subtotal" translate="label comment" type="text" sortOrder="109" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Minimum Cart Subtotal</label>
+                    <comment>Coupon only applies to carts at or above this value. Set 0 for no minimum.</comment>
+                    <validate>validate-number validate-zero-or-greater</validate>
                     <depends>
                         <field id="enabled">1</field>
                         <field id="coupon_enabled">1</field>
@@ -364,6 +384,15 @@
                     <label>Coupon Lifetime (Days)</label>
                     <comment>Days until generated coupons expire (default: 7)</comment>
                     <validate>validate-digits validate-greater-than-zero</validate>
+                    <depends>
+                        <field id="enabled">1</field>
+                        <field id="coupon_enabled">1</field>
+                    </depends>
+                </field>
+
+                <field id="coupon_managed_rule_id" translate="label" sortOrder="135" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Managed Cart Price Rule</label>
+                    <frontend_model>ArtLounge\BentoCore\Block\Adminhtml\System\Config\ManagedRuleInfo</frontend_model>
                     <depends>
                         <field id="enabled">1</field>
                         <field id="coupon_enabled">1</field>

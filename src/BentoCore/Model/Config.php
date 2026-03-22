@@ -69,6 +69,10 @@ class Config implements ConfigInterface
     private const XML_PATH_COUPON_RULE_ID = 'abandoned_cart/coupon_rule_id';
     private const XML_PATH_COUPON_PREFIX = 'abandoned_cart/coupon_prefix';
     private const XML_PATH_COUPON_LIFETIME = 'abandoned_cart/coupon_lifetime_days';
+    private const XML_PATH_COUPON_DISCOUNT_TYPE = 'abandoned_cart/coupon_discount_type';
+    private const XML_PATH_COUPON_DISCOUNT_AMOUNT = 'abandoned_cart/coupon_discount_amount';
+    private const XML_PATH_COUPON_MIN_SUBTOTAL = 'abandoned_cart/coupon_min_subtotal';
+    private const XML_PATH_COUPON_MANAGED_RULE_ID = 'abandoned_cart/coupon_managed_rule_id';
 
     // Tracking paths
     private const XML_PATH_TRACKING_ENABLED = 'tracking/enabled';
@@ -298,6 +302,9 @@ class Config implements ConfigInterface
             && $this->getFlag(self::XML_PATH_COUPON_ENABLED, $storeId);
     }
 
+    /**
+     * @deprecated Use RuleManager::ensureRule() instead
+     */
     public function getCouponRuleId(?int $storeId = null): ?int
     {
         $value = $this->getValue(self::XML_PATH_COUPON_RULE_ID, $storeId);
@@ -314,6 +321,27 @@ class Config implements ConfigInterface
     public function getCouponLifetimeDays(?int $storeId = null): int
     {
         return (int)($this->getValue(self::XML_PATH_COUPON_LIFETIME, $storeId) ?: 7);
+    }
+
+    public function getCouponDiscountType(?int $storeId = null): string
+    {
+        return (string)($this->getValue(self::XML_PATH_COUPON_DISCOUNT_TYPE, $storeId) ?: 'by_percent');
+    }
+
+    public function getCouponDiscountAmount(?int $storeId = null): float
+    {
+        return (float)($this->getValue(self::XML_PATH_COUPON_DISCOUNT_AMOUNT, $storeId) ?: 10);
+    }
+
+    public function getCouponMinSubtotal(?int $storeId = null): float
+    {
+        return (float)($this->getValue(self::XML_PATH_COUPON_MIN_SUBTOTAL, $storeId) ?: 0);
+    }
+
+    public function getCouponManagedRuleId(?int $storeId = null): ?int
+    {
+        $value = $this->getValue(self::XML_PATH_COUPON_MANAGED_RULE_ID, $storeId);
+        return $value ? (int)$value : null;
     }
 
     // ===================

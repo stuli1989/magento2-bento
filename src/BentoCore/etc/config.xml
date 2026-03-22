@@ -62,6 +62,9 @@
                 <coupon_enabled>0</coupon_enabled>
                 <coupon_prefix>BENTO</coupon_prefix>
                 <coupon_lifetime_days>7</coupon_lifetime_days>
+                <coupon_discount_type>by_percent</coupon_discount_type>
+                <coupon_discount_amount>10</coupon_discount_amount>
+                <coupon_min_subtotal>0</coupon_min_subtotal>
             </abandoned_cart>
 
             <!-- Client-Side Tracking -->

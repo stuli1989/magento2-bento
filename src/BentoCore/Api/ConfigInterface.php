@@ -59,9 +59,14 @@ interface ConfigInterface
 
     // Abandoned Cart Coupon Settings
     public function isCouponEnabled(?int $storeId = null): bool;
+    /** @deprecated Use RuleManager::ensureRule() instead */
     public function getCouponRuleId(?int $storeId = null): ?int;
     public function getCouponPrefix(?int $storeId = null): string;
     public function getCouponLifetimeDays(?int $storeId = null): int;
+    public function getCouponDiscountType(?int $storeId = null): string;
+    public function getCouponDiscountAmount(?int $storeId = null): float;
+    public function getCouponMinSubtotal(?int $storeId = null): float;
+    public function getCouponManagedRuleId(?int $storeId = null): ?int;
 
     // Tracking Settings
     public function isTrackingEnabled(?int $storeId = null): bool;

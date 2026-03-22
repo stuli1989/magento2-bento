@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace ArtLounge\BentoEvents\Service;
 
 use ArtLounge\BentoCore\Api\ConfigInterface;
+use ArtLounge\BentoEvents\Model\Coupon\RuleManager;
 use Magento\SalesRule\Model\CouponFactory;
 use Magento\SalesRule\Model\ResourceModel\Coupon as CouponResource;
 use Magento\SalesRule\Model\ResourceModel\Coupon\CollectionFactory as CouponCollectionFactory;
@@ -20,6 +21,7 @@ class CouponService
 
     public function __construct(
         private readonly ConfigInterface $config,
+        private readonly RuleManager $ruleManager,
         private readonly CouponFactory $couponFactory,
         private readonly CouponResource $couponResource,
         private readonly CouponCollectionFactory $couponCollectionFactory,
@@ -38,12 +40,17 @@ class CouponService
             return null;
         }
 
-        $ruleId = $this->config->getCouponRuleId($storeId);
+        $ruleId = $this->ruleManager->ensureRule($storeId);
         if ($ruleId === null) {
+            $this->logger->warning('Bento coupon: no managed rule available', [
+                'quote_id' => $quoteId,
+                'store_id' => $storeId
+            ]);
             return null;
         }
 
-        $existing = $this->findExistingCoupon($quoteId, $ruleId);
+        // Dedup by description only (survives rule recreation)
+        $existing = $this->findExistingCoupon($quoteId);
         if ($existing !== null) {
             return $existing;
         }
@@ -103,10 +110,12 @@ class CouponService
         }
     }
 
-    private function findExistingCoupon(int $quoteId, int $ruleId): ?array
+    /**
+     * Find existing coupon by quote ID (dedup by description only — survives rule recreation).
+     */
+    private function findExistingCoupon(int $quoteId): ?array
     {
         $collection = $this->couponCollectionFactory->create();
-        $collection->addFieldToFilter('rule_id', $ruleId);
         $collection->addFieldToFilter('description', self::DESCRIPTION_PREFIX . $quoteId);
         $collection->setPageSize(1);
 

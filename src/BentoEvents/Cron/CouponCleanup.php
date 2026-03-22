@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace ArtLounge\BentoEvents\Cron;
 
 use ArtLounge\BentoCore\Api\ConfigInterface;
+use ArtLounge\BentoEvents\Model\Coupon\RuleManager;
 use Magento\SalesRule\Model\ResourceModel\Coupon as CouponResource;
 use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -14,6 +15,7 @@ class CouponCleanup
 
     public function __construct(
         private readonly ConfigInterface $config,
+        private readonly RuleManager $ruleManager,
         private readonly CouponResource $couponResource,
         private readonly StoreManagerInterface $storeManager,
         private readonly LoggerInterface $logger
@@ -29,7 +31,7 @@ class CouponCleanup
                 continue;
             }
 
-            $ruleId = $this->config->getCouponRuleId($storeId);
+            $ruleId = $this->ruleManager->getManagedRuleId();
             $prefix = $this->config->getCouponPrefix($storeId);
             if ($ruleId === null) {
                 continue;

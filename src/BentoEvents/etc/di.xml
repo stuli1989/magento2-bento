@@ -27,6 +27,24 @@
         </arguments>
     </type>
 
+    <type name="ArtLounge\BentoEvents\Model\Coupon\RuleManager">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <type name="ArtLounge\BentoEvents\Observer\AdminConfigSaveObserver">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
+    <type name="ArtLounge\BentoEvents\Cron\CouponCleanup">
+        <arguments>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
     <type name="ArtLounge\BentoEvents\Model\AbandonedCart\Scheduler">
         <arguments>
             <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
