@@ -26,18 +26,17 @@ class EventDeduplicator
         $tableName = $this->resourceConnection->getTableName(self::TABLE_NAME);
 
         try {
-            $affectedRows = $connection->insertOnDuplicate(
-                $tableName,
-                [
-                    'quote_id' => $quoteId,
-                    'event_name' => $eventName,
-                    'sent_at' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
-                ],
-                [] // empty update columns = INSERT IGNORE behavior
+            $sentAt = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+            $connection->query(
+                sprintf(
+                    'INSERT IGNORE INTO %s (quote_id, event_name, sent_at) VALUES (?, ?, ?)',
+                    $tableName
+                ),
+                [$quoteId, $eventName, $sentAt]
             );
 
-            // 1 = inserted (first time), 0 = duplicate (already sent)
-            return $affectedRows > 0;
+            // INSERT IGNORE: 1 = inserted (first time), 0 = ignored (duplicate)
+            return (int)$connection->fetchOne('SELECT ROW_COUNT()') === 1;
         } catch (\Exception $e) {
             $this->logger->warning('Event dedup insert failed', [
                 'quote_id' => $quoteId,
