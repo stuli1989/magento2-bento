@@ -38,6 +38,7 @@ class CreateBentoSubscriptions implements DataPatchInterface
         'bento.newsletter.subscribed',
         'bento.newsletter.unsubscribed',
         'bento.cart.abandoned',
+        'bento.checkout.started',
     ];
 
     /**

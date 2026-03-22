@@ -143,15 +143,14 @@ class QuoteSaved implements ObserverInterface
     {
         try {
             $moduleName = $this->request->getModuleName();
-            if ($moduleName === 'checkout') {
+            if ($moduleName === 'checkout' || $moduleName === 'onestepcheckout') {
                 return true;
             }
 
-            if ($moduleName === 'rest' || $moduleName === 'webapi_rest') {
-                $uri = (string)$this->request->getRequestUri();
-                if (str_contains($uri, '/carts/') || str_contains($uri, '/guest-carts/')) {
-                    return true;
-                }
+            // REST API context: module name may be 'rest', 'webapi_rest', or null
+            $uri = (string)$this->request->getRequestUri();
+            if (str_contains($uri, '/carts/') || str_contains($uri, '/guest-carts/')) {
+                return true;
             }
 
             return false;
