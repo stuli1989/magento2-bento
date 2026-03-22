@@ -1,4 +1,9 @@
 {
+    "salesrule_coupon": {
+        "column": {
+            "description": true
+        }
+    },
     "artlounge_bento_abandoned_cart_schedule": {
         "column": {
             "schedule_id": true,

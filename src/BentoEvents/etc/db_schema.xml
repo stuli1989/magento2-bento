@@ -87,6 +87,12 @@
         </index>
     </table>
 
+    <!-- Add description column to salesrule_coupon for Bento coupon-to-quote tracking -->
+    <table name="salesrule_coupon" resource="default">
+        <column xsi:type="varchar" name="description" nullable="true" length="255"
+                comment="Description — used by Bento to link auto-generated coupons to quote IDs"/>
+    </table>
+
     <!-- Per-Quote Event Deduplication -->
     <table name="artlounge_bento_event_sent" resource="default" engine="innodb"
            comment="Bento Per-Quote Event Deduplication">
