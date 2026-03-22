@@ -16,6 +16,7 @@ declare(strict_types=1);
 namespace ArtLounge\BentoEvents\Model;
 
 use ArtLounge\BentoEvents\Service\AbandonedCartService;
+use ArtLounge\BentoEvents\Service\CheckoutService;
 use ArtLounge\BentoEvents\Service\CustomerService;
 use ArtLounge\BentoEvents\Service\NewsletterService;
 use ArtLounge\BentoEvents\Service\OrderService;
@@ -76,10 +77,16 @@ class ServiceDataResolver
             'method' => 'getSubscriberData',
             'id_type' => 'int',
         ],
+        'bento.checkout.started' => [
+            'service' => 'checkout',
+            'method' => 'getCheckoutStartedData',
+            'id_type' => 'int',
+        ],
     ];
 
     public function __construct(
         private readonly AbandonedCartService $abandonedCartService,
+        private readonly CheckoutService $checkoutService,
         private readonly OrderService $orderService,
         private readonly CustomerService $customerService,
         private readonly NewsletterService $newsletterService,
@@ -141,6 +148,7 @@ class ServiceDataResolver
     {
         return match ($key) {
             'abandoned_cart' => $this->abandonedCartService,
+            'checkout' => $this->checkoutService,
             'order' => $this->orderService,
             'customer' => $this->customerService,
             'newsletter' => $this->newsletterService,
