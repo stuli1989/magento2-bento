@@ -108,11 +108,28 @@ class Scheduler
 
     /**
      * Schedule via database for cron processing
+     *
+     * If a record already exists with status 'sent', it is left alone — the event
+     * was already delivered and re-scheduling would wipe that proof from the grid.
+     * Only pending/ineligible/error records are re-scheduled.
      */
     private function scheduleViaCron(Quote $quote, int $delayMinutes): void
     {
         $connection = $this->resourceConnection->getConnection();
         $tableName = $this->resourceConnection->getTableName(self::TABLE_NAME);
+        $quoteId = (int)$quote->getId();
+
+        // Don't re-schedule if already sent — preserve the 'sent' status in the grid
+        $currentStatus = $connection->fetchOne(
+            $connection->select()
+                ->from($tableName, ['status'])
+                ->where('quote_id = ?', $quoteId)
+                ->limit(1)
+        );
+
+        if ($currentStatus === 'sent') {
+            return;
+        }
 
         $checkAt = $this->dateTime->gmtDate(
             'Y-m-d H:i:s',
@@ -120,10 +137,13 @@ class Scheduler
         );
 
         // Use INSERT ... ON DUPLICATE KEY UPDATE to handle existing entries
+        // Do NOT include 'status' in the update list — only the Checker should
+        // transition status (via markProcessed). This prevents quote saves from
+        // resetting a 'sent' or terminal status back to 'pending'.
         $connection->insertOnDuplicate(
             $tableName,
             [
-                'quote_id' => (int)$quote->getId(),
+                'quote_id' => $quoteId,
                 'store_id' => (int)$quote->getStoreId(),
                 'customer_email' => $this->normalizeEmail((string)$quote->getCustomerEmail()),
                 'grand_total' => (float)$quote->getGrandTotal(),
@@ -133,7 +153,7 @@ class Scheduler
                 'status' => 'pending',
                 'attempts' => 0
             ],
-            ['scheduled_at', 'check_at', 'quote_updated_at', 'grand_total', 'status']
+            ['scheduled_at', 'check_at', 'quote_updated_at', 'grand_total']
         );
     }
 

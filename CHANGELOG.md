@@ -4,6 +4,14 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [1.3.1] — 2026-03-24
+
+### Fixed
+- **Abandoned cart scheduler**: `scheduleViaCron` no longer overwrites `sent` status back to `pending` — records that have already been delivered are left untouched, preserving proof-of-delivery in the admin grid
+- Removed `status` from the `ON DUPLICATE KEY UPDATE` column list so only the Checker (via `markProcessed`) can transition status
+
+---
+
 ## [1.3.0] — 2026-03-22
 
 ### Added
