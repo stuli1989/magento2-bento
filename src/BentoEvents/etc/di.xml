@@ -78,7 +78,7 @@
     <type name="Magento\Framework\Console\CommandListInterface">
         <arguments>
             <argument name="commands" xsi:type="array">
-                <item name="bento_outbox_status" xsi:type="object">ArtLounge\BentoEvents\Console\Command\OutboxStatusCommand</item>
+                <item name="bento_outbox_status" xsi:type="object">ArtLounge\BentoEvents\Console\Command\BentoOutboxStatusCommand</item>
                 <item name="bento_outbox_replay" xsi:type="object">ArtLounge\BentoEvents\Console\Command\OutboxReplayCommand</item>
                 <item name="bento_outbox_run" xsi:type="object">ArtLounge\BentoEvents\Console\Command\OutboxRunCommand</item>
                 <item name="bento_outbox_preview" xsi:type="object">ArtLounge\BentoEvents\Console\Command\OutboxPreviewCommand</item>
