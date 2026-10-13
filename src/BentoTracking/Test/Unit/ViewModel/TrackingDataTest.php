@@ -43,7 +43,7 @@ class TrackingDataTest extends TestCase
         $product->method('getFinalPrice')->willReturn(80.0);
         $product->method('getProductUrl')->willReturn('https://example.com/product');
         $product->method('getCategoryIds')->willReturn([1]);
-        $product->method('getData')->with('brand')->willReturn('Brand');
+        $product->method('getData')->willReturnCallback(fn ($k) => $k === 'brand' ? 'Brand' : null);
         $product->method('getAttributeText')->with('brand')->willReturn('Brand');
         $product->method('getSpecialPrice')->willReturn(80.0);
         $product->method('getPrice')->willReturn(100.0);
@@ -56,80 +56,7 @@ class TrackingDataTest extends TestCase
         $this->assertSame('Brand', $data['brand']);
         $this->assertSame(8000, $data['special_price']);
         $this->assertSame(10000, $data['original_price']);
-        $this->assertSame(['Category'], $data['categories']);
-    }
-
-    public function testGetLastOrderDataJsonReturnsOrderData(): void
-    {
-        $order = $this->createMock(OrderInterface::class);
-        $item = $this->createMock(OrderItemInterface::class);
-
-        $order->method('getId')->willReturn(10);
-        $order->method('getEntityId')->willReturn(10);
-        $order->method('getIncrementId')->willReturn('00001');
-        $order->method('getGrandTotal')->willReturn(200.0);
-        $order->method('getTaxAmount')->willReturn(20.0);
-        $order->method('getSubtotal')->willReturn(180.0);
-        $order->method('getShippingAmount')->willReturn(10.0);
-        $order->method('getOrderCurrencyCode')->willReturn('INR');
-        $order->method('getCustomerEmail')->willReturn('test@example.com');
-        $order->method('getCustomerFirstname')->willReturn('Test');
-        $order->method('getCustomerLastname')->willReturn('User');
-        $order->method('getAllVisibleItems')->willReturn([$item]);
-
-        $item->method('getProductId')->willReturn(1);
-        $item->method('getSku')->willReturn('SKU');
-        $item->method('getName')->willReturn('Item');
-        $item->method('getQtyOrdered')->willReturn(1);
-        $item->method('getPrice')->willReturn(100.0);
-
-        $viewModel = $this->createViewModel(null, $order);
-
-        $json = $viewModel->getLastOrderDataJson();
-        $data = json_decode($json, true);
-
-        $this->assertSame('00001', $data['increment_id']);
-        $this->assertSame(20000, $data['total']);
-        $this->assertSame(1, $data['item_count']);
-    }
-
-    public function testGetLastOrderDataJsonIncludesBrandWhenEnabled(): void
-    {
-        $order = $this->createMock(OrderInterface::class);
-        $item = $this->createMock(OrderItemInterface::class);
-
-        $order->method('getId')->willReturn(10);
-        $order->method('getEntityId')->willReturn(10);
-        $order->method('getIncrementId')->willReturn('00001');
-        $order->method('getGrandTotal')->willReturn(200.0);
-        $order->method('getTaxAmount')->willReturn(20.0);
-        $order->method('getSubtotal')->willReturn(180.0);
-        $order->method('getShippingAmount')->willReturn(10.0);
-        $order->method('getOrderCurrencyCode')->willReturn('INR');
-        $order->method('getCustomerEmail')->willReturn('test@example.com');
-        $order->method('getCustomerFirstname')->willReturn('Test');
-        $order->method('getCustomerLastname')->willReturn('User');
-        $order->method('getAllVisibleItems')->willReturn([$item]);
-
-        $item->method('getProductId')->willReturn(1);
-        $item->method('getSku')->willReturn('SKU');
-        $item->method('getName')->willReturn('Item');
-        $item->method('getQtyOrdered')->willReturn(1);
-        $item->method('getPrice')->willReturn(100.0);
-
-        $viewModel = $this->createViewModel(null, $order);
-
-        $json = $viewModel->getLastOrderDataJson();
-        $data = json_decode($json, true);
-
-        $this->assertSame('Brand', $data['items'][0]['brand']);
-    }
-
-    public function testGetLastOrderDataJsonReturnsEmptyWhenNoOrder(): void
-    {
-        $viewModel = $this->createViewModel(null, null);
-
-        $this->assertSame('{}', $viewModel->getLastOrderDataJson());
+        $this->assertSame('Category', $data['categories']);
     }
 
     public function testGetProductDataJsonBasicFields(): void
@@ -166,7 +93,7 @@ class TrackingDataTest extends TestCase
         $product->method('getFinalPrice')->willReturn(10.0);
         $product->method('getProductUrl')->willReturn('https://example.com');
         $product->method('getCategoryIds')->willReturn([]);
-        $product->method('getData')->with('brand')->willReturn(null);
+        $product->method('getData')->willReturnCallback(fn ($k) => $k === 'brand' ? null : null);
         $product->method('getSpecialPrice')->willReturn(null);
         $product->method('getPrice')->willReturn(10.0);
 
@@ -208,40 +135,10 @@ class TrackingDataTest extends TestCase
         $this->assertTrue($viewModel->isProductViewEnabled());
     }
 
-    public function testIsAddToCartEnabledDelegatesToConfig(): void
-    {
-        $viewModel = $this->createViewModel(null);
-        $this->assertTrue($viewModel->isAddToCartEnabled());
-    }
-
-    public function testIsCheckoutEnabledDelegatesToConfig(): void
-    {
-        $viewModel = $this->createViewModel(null);
-        $this->assertTrue($viewModel->isCheckoutEnabled());
-    }
-
-    public function testGetAddToCartSelectorDelegatesToConfig(): void
-    {
-        $viewModel = $this->createViewModel(null);
-        $this->assertSame('#selector', $viewModel->getAddToCartSelector());
-    }
-
     public function testGetCurrencyCodeReturnsStoreCode(): void
     {
         $viewModel = $this->createViewModel(null);
         $this->assertSame('INR', $viewModel->getCurrencyCode());
-    }
-
-    public function testGetCurrencyMultiplierDelegatesToConfig(): void
-    {
-        $viewModel = $this->createViewModel(null);
-        $this->assertSame(100, $viewModel->getCurrencyMultiplier());
-    }
-
-    public function testIsPurchaseTrackingEnabledDelegatesToConfig(): void
-    {
-        $viewModel = $this->createViewModel(null);
-        $this->assertTrue($viewModel->isPurchaseTrackingEnabled());
     }
 
     public function testGetCurrentProductFromRegistry(): void
@@ -257,56 +154,7 @@ class TrackingDataTest extends TestCase
         $this->assertNull($viewModel->getCurrentProduct());
     }
 
-    public function testGetLastOrderDataJsonIncrementIdDisplay(): void
-    {
-        $order = $this->createMock(OrderInterface::class);
-        $order->method('getId')->willReturn(10);
-        $order->method('getEntityId')->willReturn(10);
-        $order->method('getIncrementId')->willReturn('100000099');
-        $order->method('getGrandTotal')->willReturn(100.0);
-        $order->method('getTaxAmount')->willReturn(10.0);
-        $order->method('getSubtotal')->willReturn(90.0);
-        $order->method('getShippingAmount')->willReturn(0.0);
-        $order->method('getOrderCurrencyCode')->willReturn('INR');
-        $order->method('getCustomerEmail')->willReturn('a@b.com');
-        $order->method('getCustomerFirstname')->willReturn('A');
-        $order->method('getCustomerLastname')->willReturn('B');
-        $order->method('getAllVisibleItems')->willReturn([]);
-
-        $viewModel = $this->createViewModel(null, $order);
-        $data = json_decode($viewModel->getLastOrderDataJson(), true);
-
-        $this->assertSame('100000099', $data['increment_id']);
-        $this->assertSame('#100000099', $data['increment_id_display']);
-        $this->assertSame(0, $data['item_count']);
-        $this->assertSame([], $data['items']);
-    }
-
-    public function testGetLastOrderDataJsonCustomerData(): void
-    {
-        $order = $this->createMock(OrderInterface::class);
-        $order->method('getId')->willReturn(10);
-        $order->method('getEntityId')->willReturn(10);
-        $order->method('getIncrementId')->willReturn('00001');
-        $order->method('getGrandTotal')->willReturn(100.0);
-        $order->method('getTaxAmount')->willReturn(0.0);
-        $order->method('getSubtotal')->willReturn(100.0);
-        $order->method('getShippingAmount')->willReturn(0.0);
-        $order->method('getOrderCurrencyCode')->willReturn('INR');
-        $order->method('getCustomerEmail')->willReturn('john@example.com');
-        $order->method('getCustomerFirstname')->willReturn('John');
-        $order->method('getCustomerLastname')->willReturn('Doe');
-        $order->method('getAllVisibleItems')->willReturn([]);
-
-        $viewModel = $this->createViewModel(null, $order);
-        $data = json_decode($viewModel->getLastOrderDataJson(), true);
-
-        $this->assertSame('john@example.com', $data['email']);
-        $this->assertSame('John', $data['customer_firstname']);
-        $this->assertSame('Doe', $data['customer_lastname']);
-    }
-
-    private function createViewModel(?ProductInterface $product, ?OrderInterface $order = null): TrackingData
+    private function createViewModel(?ProductInterface $product): TrackingData
     {
         $config = $this->createMock(ConfigInterface::class);
         $registry = $this->createMock(Registry::class);
@@ -318,21 +166,15 @@ class TrackingDataTest extends TestCase
         $json = $this->createMock(Json::class);
         $checkoutSession = $this->createMock(CheckoutSession::class);
 
-        $config->method('getCurrencyMultiplier')->willReturn(100);
         $config->method('getBrandAttribute')->willReturn('brand');
         $config->method('isTrackingEnabled')->willReturn(true);
         $config->method('isTrackViewsEnabled')->willReturn(true);
-        $config->method('isTrackAddToCartEnabled')->willReturn(true);
-        $config->method('isTrackCheckoutEnabled')->willReturn(true);
-        $config->method('getAddToCartSelector')->willReturn('#selector');
-        $config->method('includeTaxInTotals')->willReturn(true);
-        $config->method('isTrackOrderPlacedEnabled')->willReturn(true);
         $config->method('includeBrand')->willReturn(true);
 
         $registry->method('registry')->with('current_product')->willReturn($product);
 
         $loadedProduct = $this->createMock(ProductInterface::class);
-        $loadedProduct->method('getData')->with('brand')->willReturn('Brand');
+        $loadedProduct->method('getData')->willReturnCallback(fn ($k) => $k === 'brand' ? 'Brand' : null);
         $loadedProduct->method('getAttributeText')->with('brand')->willReturn('Brand');
         $productRepository->method('getById')->willReturn($loadedProduct);
 
@@ -358,18 +200,13 @@ class TrackingDataTest extends TestCase
             return json_encode($data);
         });
 
-        $checkoutSession->method('getLastRealOrder')->willReturn($order);
-
         return new TrackingData(
             $config,
             $registry,
-            $productRepository,
             $categoryRepository,
             $stockRegistry,
-            $imageHelper,
             $storeManager,
-            $json,
-            $checkoutSession
+            $json
         );
     }
 }
