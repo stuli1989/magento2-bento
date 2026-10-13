@@ -1,9 +1,4 @@
 <?xml version="1.0"?>
-<!--
-/**
- * ArtLounge Bento Events Module
- */
--->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Module/etc/module.xsd">
     <module name="ArtLounge_BentoEvents">
@@ -13,7 +8,8 @@
             <module name="Magento_Newsletter"/>
             <module name="Magento_Quote"/>
             <module name="Magento_Catalog"/>
-            <module name="Aligent_AsyncEvents"/>
+            <module name="Magento_SalesRule"/>
+            <module name="Razorpay_Magento"/>
             <module name="ArtLounge_BentoCore"/>
         </sequence>
     </module>

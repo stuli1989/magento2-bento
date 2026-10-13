@@ -1,14 +1,13 @@
 <?xml version="1.0"?>
 <!--
 /**
- * Default Configuration Values
+ * Default Configuration Values (v2)
  */
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
     <default>
         <artlounge_bento>
-            <!-- General Settings -->
             <general>
                 <enabled>0</enabled>
                 <site_uuid></site_uuid>
@@ -16,74 +15,101 @@
                 <secret_key backend_model="Magento\Config\Model\Config\Backend\Encrypted"/>
                 <source>artlounge</source>
                 <debug>0</debug>
+                <test_mode_emails></test_mode_emails>
             </general>
-
-            <!-- Order Events -->
             <orders>
-                <enabled>1</enabled>
-                <track_placed>1</track_placed>
-                <track_shipped>1</track_shipped>
-                <track_cancelled>1</track_cancelled>
-                <track_refunded>1</track_refunded>
                 <include_tax>1</include_tax>
-                <currency_multiplier>100</currency_multiplier>
-                <include_images>1</include_images>
-                <include_categories>1</include_categories>
             </orders>
-
-            <!-- Customer Events -->
-            <customers>
-                <enabled>1</enabled>
-                <track_created>1</track_created>
-                <track_updated>0</track_updated>
-                <default_tags>lead,mql</default_tags>
-                <include_address>1</include_address>
-            </customers>
-
-            <!-- Newsletter Events -->
-            <newsletter>
-                <enabled>1</enabled>
-                <track_subscribe>1</track_subscribe>
-                <track_unsubscribe>1</track_unsubscribe>
-                <subscribe_tags>newsletter</subscribe_tags>
-            </newsletter>
-
-            <!-- Abandoned Cart -->
             <abandoned_cart>
                 <enabled>1</enabled>
                 <delay_minutes>60</delay_minutes>
                 <min_value>500</min_value>
-                <require_email>1</require_email>
-                <exclude_groups></exclude_groups>
-                <processing_method>cron</processing_method>
-                <include_recovery_url>1</include_recovery_url>
-                <prevent_duplicates>1</prevent_duplicates>
-                <duplicate_window>24</duplicate_window>
+                <contact_capture_delay_minutes>30</contact_capture_delay_minutes>
                 <coupon_enabled>0</coupon_enabled>
+                <coupon_min_subtotal>2000</coupon_min_subtotal>
                 <coupon_prefix>BENTO</coupon_prefix>
                 <coupon_lifetime_days>7</coupon_lifetime_days>
                 <coupon_discount_type>by_percent</coupon_discount_type>
                 <coupon_discount_amount>10</coupon_discount_amount>
-                <coupon_min_subtotal>0</coupon_min_subtotal>
             </abandoned_cart>
-
-            <!-- Client-Side Tracking -->
             <tracking>
                 <enabled>1</enabled>
                 <track_views>1</track_views>
-                <track_add_to_cart>1</track_add_to_cart>
-                <track_checkout>1</track_checkout>
-                <add_to_cart_selector>#product-addtocart-button, .add_cart_btn.addToCart</add_to_cart_selector>
+                <track_cart>1</track_cart>
+                <contact_capture>1</contact_capture>
                 <include_brand>1</include_brand>
                 <brand_attribute>manufacturer</brand_attribute>
             </tracking>
-
-            <!-- Advanced Settings -->
+            <profile>
+                <!-- category_id=medium. Deepest mapped ancestor of a product's category wins.
+                     Derived from the live category tree 2026-10-13. Unmapped categories are ignored. -->
+                <category_medium_map><![CDATA[# Paints & mediums
+94=watercolour
+92=acrylic
+93=oil
+97=gouache
+145=ink
+95=mixed
+96=mixed
+206=acrylic
+207=oil
+209=mixed
+210=mixed
+211=gouache
+212=ink
+# Brushes & palettes
+115=watercolour
+116=acrylic
+117=oil
+507=watercolour
+506=acrylic
+508=oil
+480=watercolour
+456=ink
+460=ink
+459=mixed
+# Drawing & illustration
+103=drawing
+104=drawing
+107=drawing
+279=pastel
+280=pastel
+281=pastel
+282=pastel
+108=pastel
+105=markers
+268=markers
+106=ink
+109=ink
+111=ink
+112=surfaces
+# Calligraphy & markers
+565=ink
+566=markers
+568=markers
+570=ink
+572=ink
+573=ink
+576=ink
+577=ink
+580=ink
+# Surfaces
+85=surfaces
+219=watercolour
+220=drawing
+221=ink
+225=mixed
+231=pastel
+298=pastel
+239=printmaking
+# Printmaking
+90=printmaking
+136=printmaking
+# Crafts
+88=mixed]]></category_medium_map>
+            </profile>
             <advanced>
-                <max_retries>5</max_retries>
-                <log_retention>30</log_retention>
-                <elasticsearch>1</elasticsearch>
-                <timeout>30</timeout>
+                <timeout>10</timeout>
             </advanced>
         </artlounge_bento>
     </default>

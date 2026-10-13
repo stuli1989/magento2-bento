@@ -1,88 +1,59 @@
 <?php
 /**
- * Configuration Interface
- *
- * Provides access to all Bento integration configuration values.
- *
- * @category  ArtLounge
- * @package   ArtLounge_BentoCore
+ * Bento configuration (Stores > Configuration > ArtLounge > Bento Integration).
  */
 
 declare(strict_types=1);
 
 namespace ArtLounge\BentoCore\Api;
 
+use ArtLounge\BentoCore\Model\TestMode;
+
 interface ConfigInterface
 {
-    // General Settings
+    // General
     public function isEnabled(?int $storeId = null): bool;
     public function getSiteUuid(?int $storeId = null): ?string;
     public function getPublishableKey(?int $storeId = null): ?string;
     public function getSecretKey(?int $storeId = null): ?string;
+    /** Enabled AND site uuid + both keys present. */
+    public function isConfigured(?int $storeId = null): bool;
     public function getSource(?int $storeId = null): string;
     public function isDebugEnabled(?int $storeId = null): bool;
-
-    // Order Settings
-    public function isOrderEventsEnabled(?int $storeId = null): bool;
-    public function isTrackOrderPlacedEnabled(?int $storeId = null): bool;
-    public function isTrackOrderShippedEnabled(?int $storeId = null): bool;
-    public function isTrackOrderCancelledEnabled(?int $storeId = null): bool;
-    public function isTrackOrderRefundedEnabled(?int $storeId = null): bool;
-    public function includeTaxInTotals(?int $storeId = null): bool;
-    public function getCurrencyMultiplier(?int $storeId = null): int;
-    public function includeProductImages(?int $storeId = null): bool;
-    public function includeCategories(?int $storeId = null): bool;
-
-    // Customer Settings
-    public function isCustomerEventsEnabled(?int $storeId = null): bool;
-    public function isTrackCustomerCreatedEnabled(?int $storeId = null): bool;
-    public function isTrackCustomerUpdatedEnabled(?int $storeId = null): bool;
-    public function getDefaultTags(?int $storeId = null): array;
-    public function includeCustomerAddress(?int $storeId = null): bool;
-
-    // Newsletter Settings
-    public function isNewsletterEventsEnabled(?int $storeId = null): bool;
-    public function isTrackSubscribeEnabled(?int $storeId = null): bool;
-    public function isTrackUnsubscribeEnabled(?int $storeId = null): bool;
-    public function getSubscribeTags(?int $storeId = null): array;
-
-    // Abandoned Cart Settings
-    public function isAbandonedCartEnabled(?int $storeId = null): bool;
-    public function getAbandonedCartDelay(?int $storeId = null): int;
-    public function getAbandonedCartMinValue(?int $storeId = null): float;
-    public function isAbandonedCartEmailRequired(?int $storeId = null): bool;
-    public function getExcludedCustomerGroups(?int $storeId = null): array;
-    public function getAbandonedCartProcessingMethod(?int $storeId = null): string;
-    public function includeRecoveryUrl(?int $storeId = null): bool;
-    public function preventDuplicates(?int $storeId = null): bool;
-    public function getAbandonedCartDuplicateWindow(?int $storeId = null): int;
-
-    // Abandoned Cart Coupon Settings
-    public function isCouponEnabled(?int $storeId = null): bool;
-    /** @deprecated Use RuleManager::ensureRule() instead */
-    public function getCouponRuleId(?int $storeId = null): ?int;
-    public function getCouponPrefix(?int $storeId = null): string;
-    public function getCouponLifetimeDays(?int $storeId = null): int;
-    public function getCouponDiscountType(?int $storeId = null): string;
-    public function getCouponDiscountAmount(?int $storeId = null): float;
-    public function getCouponMinSubtotal(?int $storeId = null): float;
-    public function getCouponManagedRuleId(?int $storeId = null): ?int;
-
-    // Tracking Settings
-    public function isTrackingEnabled(?int $storeId = null): bool;
-    public function isTrackViewsEnabled(?int $storeId = null): bool;
-    public function isTrackAddToCartEnabled(?int $storeId = null): bool;
-    public function isTrackCheckoutEnabled(?int $storeId = null): bool;
-    public function getAddToCartSelector(?int $storeId = null): string;
-    public function includeBrand(?int $storeId = null): bool;
-    public function getBrandAttribute(?int $storeId = null): string;
-
-    // Advanced Settings
-    public function getMaxRetries(): int;
-    public function getLogRetention(): int;
-    public function isElasticsearchEnabled(): bool;
+    public function debug(string $message, array $context = [], ?int $storeId = null): void;
+    /** @return string[] glob patterns; empty = test mode off */
+    public function getTestModeEmailPatterns(): array;
+    public function getTestMode(): TestMode;
     public function getTimeout(): int;
 
-    // Debug
-    public function debug(string $message, array $context = [], ?int $storeId = null): void;
+    // Orders / payload
+    public function includeTaxInTotals(?int $storeId = null): bool;
+    public function getBrandAttribute(?int $storeId = null): string;
+
+    // Browser tracking
+    public function isTrackingEnabled(?int $storeId = null): bool;
+    public function isTrackViewsEnabled(?int $storeId = null): bool;
+    public function isTrackCartEnabled(?int $storeId = null): bool;
+    public function isContactCaptureEnabled(?int $storeId = null): bool;
+    public function includeBrand(?int $storeId = null): bool;
+
+    // Abandonment
+    public function isAbandonedCartEnabled(?int $storeId = null): bool;
+    public function getCartDelayMinutes(?int $storeId = null): int;
+    public function getCartMinValue(?int $storeId = null): float;
+    public function getContactCaptureDelayMinutes(?int $storeId = null): int;
+
+    // Coupons (only on $cart_abandoned)
+    public function isCouponEnabled(?int $storeId = null): bool;
+    /** Minimum cart subtotal (₹) for a coupon; also enforced as the managed rule's condition. */
+    public function getCouponThreshold(?int $storeId = null): float;
+    public function getCouponDiscountType(?int $storeId = null): string;
+    public function getCouponDiscountAmount(?int $storeId = null): float;
+    public function getCouponLifetimeDays(?int $storeId = null): int;
+    public function getCouponPrefix(?int $storeId = null): string;
+    public function getCouponManagedRuleId(?int $storeId = null): ?int;
+
+    // Profile
+    /** @return array<int,string> category id => medium slug */
+    public function getCategoryMediumMap(): array;
 }
