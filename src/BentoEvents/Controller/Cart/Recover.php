@@ -69,8 +69,10 @@ class Recover implements HttpGetActionInterface
                 throw new \InvalidArgumentException('Quote does not belong to this store');
             }
 
-            // Validate email matches
-            if (strtolower((string)$quote->getCustomerEmail()) !== strtolower($email)) {
+            // Validate email matches. A guest quote may have no email yet (contact captured in the
+            // Magic Checkout popup only) — then the signed token alone is the proof.
+            $quoteEmail = strtolower(trim((string)$quote->getCustomerEmail()));
+            if ($quoteEmail !== '' && $quoteEmail !== strtolower($email)) {
                 throw new \InvalidArgumentException('Token email mismatch');
             }
 
