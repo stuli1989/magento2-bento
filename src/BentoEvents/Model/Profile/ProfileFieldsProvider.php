@@ -23,7 +23,9 @@ class ProfileFieldsProvider
     /** One subscriber record ready for /batch/subscribers. */
     public function subscriberRecord(string $email, array $nameAndPhone = []): array
     {
-        return $this->subscriberRecords([strtolower(trim($email))], [strtolower(trim($email)) => $nameAndPhone])[strtolower(trim($email))];
+        $email = strtolower(trim($email));
+
+        return $this->subscriberRecords([$email], [$email => $nameAndPhone])[$email] ?? ['email' => $email];
     }
 
     /**
