@@ -4,6 +4,31 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.0.0] — 2026-10-13
+
+Redesign per `docs/superpowers/specs/2026-10-13-bento-plugin-redesign-design.md` (BentoAutomationsToBuild repo).
+
+### Breaking
+- **Transport is now a transactional outbox + cron.** `Aligent_AsyncEvents`, RabbitMQ topics/consumers, `BentoNotifier`, `ServiceDataResolver`, dead-letter monitor, abandoned-cart scheduler/consumer/admin grid and the `CreateBentoSubscriptions` patch are removed. Tables `artlounge_bento_event_outbox`, `artlounge_bento_event_sent`, `artlounge_bento_abandoned_cart_schedule` are dropped.
+- Events removed: `$OrderShipped` (WISMO owns shipping), `$CustomerUpdated`, `$cart_created`, client-side `$purchase` fallback, `optin`. The plugin sends **no tags**.
+- `$purchase` fires when an order **first reaches processing/complete** (COD or captured prepaid), never for `pending_payment`.
+
+### Added
+- `artlounge_bento_outbox` (dedup key unique, backoff 1m/5m/30m/2h/12h → parked), `artlounge_bento_purchase` markers (seeded from history), `artlounge_bento_checkout_contact`.
+- Crons: `artlounge_bento_outbox_send` (every minute), `artlounge_bento_abandonment` (5 min), `artlounge_bento_reconcile` (nightly).
+- `$checkout_started` / `$checkout_abandoned` via Razorpay Magic Checkout controller plugins + browser contact capture (`POST /bento/checkout/contact`).
+- Customer profile fields via `/batch/subscribers`: order_count, lifetime_spend, aov, first_order_date, last_purchase_date, last_order_number, customer_since, is_registered, top_categories, primary_medium (+ admin category→medium map).
+- All amounts carry paise integers **and** `*_display` strings (₹1,488.60, Indian grouping). All dates ISO-8601 IST (`2026-10-13T15:30:00+05:30`) from one formatter.
+- Site-wide browser `$cart_updated` (customer-data cart diff, 3s debounce).
+- Test mode: email allow-list (globs); CLI `bento:outbox:status|replay|run|preview`, `bento:backfill`.
+- Coupons gated by cart threshold; `recovery_url` never carries the coupon, `recovery_url_with_coupon` (eligible carts only) does.
+
+### Fixed
+- Secret key is decrypted before use (v1 sent the encrypted config value).
+- `summary.product_categories` is always a JSON list.
+
+---
+
 ## [1.3.1] — 2026-03-24
 
 ### Fixed

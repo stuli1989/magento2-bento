@@ -210,13 +210,6 @@ require(['jquery', 'Magento_Customer/js/customer-data', 'domReady!'], function($
                     window._bentoPageviewDone = true;
                 }
             }
-            // If the user just opted in via newsletter form, fire the optin event
-            // to promote the visitor to a subscriber in Bento.
-            if (localStorage.getItem('bento_newsletter_optin') === '1') {
-                localStorage.removeItem('bento_newsletter_optin');
-                bento.track('optin', { source: 'footer_newsletter' });
-                window.bentoDebug && console.debug('[Bento] Newsletter optin event sent');
-            }
         } catch (e) {}
 
         // Set up user identification FIRST — bento.view() is deferred until after
@@ -244,3 +237,26 @@ require(['jquery', 'Magento_Customer/js/customer-data', 'domReady!'], function($
 });
 <?php $bentoBootstrapScript = trim((string)ob_get_clean()); ?>
 <?= /* @noEscape */ $secureRenderer->renderTag('script', [], $bentoBootstrapScript, false) ?>
+<?php
+// Cart + contact capture boot independently of the SDK: contact capture talks to Magento,
+// so an ad-blocked Bento SDK must not stop it.
+$modules = [];
+if ($viewModel->isCartTrackingEnabled()) {
+    $modules['ArtLounge_BentoTracking/js/cart-tracker'] = new \stdClass();
+}
+if ($viewModel->isContactCaptureEnabled()) {
+    $modules['ArtLounge_BentoTracking/js/contact-capture'] = ['url' => $block->getUrl('bento/checkout/contact')];
+}
+?>
+<?php if ($modules): ?>
+<?php ob_start(); ?>
+require(<?= /* @noEscape */ json_encode(array_keys($modules)) ?>, function () {
+    'use strict';
+    var configs = <?= /* @noEscape */ json_encode(array_values($modules), JSON_UNESCAPED_SLASHES) ?>;
+    for (var i = 0; i < arguments.length; i++) {
+        try { arguments[i](configs[i]); } catch (e) { window.bentoDebug && console.debug('[Bento] module init failed', e); }
+    }
+});
+<?php $bentoModulesScript = trim((string)ob_get_clean()); ?>
+<?= /* @noEscape */ $secureRenderer->renderTag('script', [], $bentoModulesScript, false) ?>
+<?php endif; ?>

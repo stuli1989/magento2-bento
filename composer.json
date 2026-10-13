@@ -1,9 +1,16 @@
 {
     "name": "artlounge/magento2-bento",
-    "description": "Magento 2 integration with Bento email marketing platform via async event queues",
+    "description": "Magento 2 to Bento email marketing: transactional outbox + cron, Razorpay Magic Checkout abandonment, customer profile fields",
     "type": "library",
     "license": "MIT",
-    "keywords": ["magento2", "bento", "email", "marketing", "async", "events", "queue"],
+    "keywords": [
+        "magento2",
+        "bento",
+        "email",
+        "marketing",
+        "outbox",
+        "razorpay"
+    ],
     "homepage": "https://github.com/stuli1989/magento2-bento",
     "require": {
         "php": ">=8.1",
@@ -17,8 +24,7 @@
         "magento/module-quote": "*",
         "magento/module-catalog": "*",
         "magento/module-checkout": "*",
-        "aligent/async-events": "^3.0",
-        "ramsey/uuid": "^4.0"
+        "magento/module-sales-rule": "*"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.5",
@@ -40,12 +46,14 @@
     "autoload-dev": {
         "psr-4": {
             "Tests\\": "tests/",
-            "Aligent\\AsyncEvents\\": "tests/Stubs/Aligent/AsyncEvents/",
             "Magento\\": "tests/Stubs/Magento/",
-            "Ramsey\\Uuid\\": "tests/Stubs/Ramsey/Uuid/",
-            "Psr\\Log\\": "tests/Stubs/Psr/Log/"
+            "Psr\\Log\\": "tests/Stubs/Psr/Log/",
+            "Razorpay\\": "tests/Stubs/Razorpay/"
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "scripts": {
+        "test": "php tests/tools/vendor/bin/phpunit -c phpunit.xml && node tests/js/cart-diff.test.js"
+    }
 }
