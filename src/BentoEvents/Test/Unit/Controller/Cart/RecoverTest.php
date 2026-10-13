@@ -76,6 +76,28 @@ class RecoverTest extends TestCase
         $controller->execute();
     }
 
+    public function testExecuteRestoresGuestCartWithoutEmailOnQuote(): void
+    {
+        // Contact captured in the Magic Checkout popup: the token carries the email,
+        // the guest quote itself has none yet. The HMAC token is the proof.
+        $mocks = $this->createRecoverMocks();
+        $this->mockRequestParams($mocks['request'], ['recover' => 'signed-token']);
+        $mocks['recoveryToken']->method('parse')->willReturn([
+            'quote_id' => 10, 'email' => 'test@example.com', 'store_id' => 1
+        ]);
+        $quote = $this->createMock(CartInterface::class);
+        $quote->method('getCustomerEmail')->willReturn(null);
+        $quote->method('getIsActive')->willReturn(true);
+        $quote->method('getItemsCount')->willReturn(1);
+        $quote->method('getCustomerId')->willReturn(null);
+        $quote->method('getStoreId')->willReturn(1);
+        $mocks['cartRepository']->method('get')->willReturn($quote);
+        $mocks['checkoutSession']->expects($this->once())->method('setQuoteId')->with(10);
+        $mocks['redirect']->method('setPath')->willReturn($mocks['redirect']);
+
+        $this->createRecoverController($mocks)->execute();
+    }
+
     public function testExecuteRejectsEmailMismatch(): void
     {
         $mocks = $this->createRecoverMocks();

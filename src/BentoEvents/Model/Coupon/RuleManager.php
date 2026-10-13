@@ -83,7 +83,7 @@ class RuleManager
 
         $discountType = $this->config->getCouponDiscountType($storeId);
         $discountAmount = $this->config->getCouponDiscountAmount($storeId);
-        $minSubtotal = $this->config->getCouponMinSubtotal($storeId);
+        $minSubtotal = $this->config->getCouponThreshold($storeId);
 
         $rule->setSimpleAction($discountType);
         $rule->setDiscountAmount($discountAmount);
@@ -119,7 +119,7 @@ class RuleManager
         try {
             $discountType = $this->config->getCouponDiscountType($storeId);
             $discountAmount = $this->config->getCouponDiscountAmount($storeId);
-            $minSubtotal = $this->config->getCouponMinSubtotal($storeId);
+            $minSubtotal = $this->config->getCouponThreshold($storeId);
 
             $rule = $this->ruleFactory->create();
             $rule->setName(self::MANAGED_RULE_NAME);

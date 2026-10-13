@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace ArtLounge\BentoEvents\Service;
 
 use ArtLounge\BentoCore\Api\ConfigInterface;
+use ArtLounge\BentoCore\Model\IstDate;
 use ArtLounge\BentoEvents\Model\Coupon\RuleManager;
 use Magento\SalesRule\Model\CouponFactory;
 use Magento\SalesRule\Model\ResourceModel\Coupon as CouponResource;
@@ -57,7 +58,7 @@ class CouponService
 
         $prefix = $this->config->getCouponPrefix($storeId);
         $lifetimeDays = $this->config->getCouponLifetimeDays($storeId);
-        $expiration = new \DateTimeImmutable('+' . $lifetimeDays . ' days');
+        $expiration = new \DateTimeImmutable('+' . $lifetimeDays . ' days', new \DateTimeZone('UTC'));
 
         $code = null;
         for ($i = 0; $i < self::MAX_COLLISION_RETRIES; $i++) {
@@ -98,7 +99,7 @@ class CouponService
 
             return [
                 'code' => $code,
-                'expires_at' => $expiration->format('c')
+                'expires_at' => IstDate::format($expiration)
             ];
         } catch (\Exception $e) {
             $this->logger->error('Bento coupon: failed to create coupon', [
@@ -123,9 +124,7 @@ class CouponService
         if ($coupon && $coupon->getId()) {
             return [
                 'code' => $coupon->getCode(),
-                'expires_at' => $coupon->getExpirationDate()
-                    ? (new \DateTimeImmutable($coupon->getExpirationDate()))->format('c')
-                    : null
+                'expires_at' => IstDate::formatOrNull($coupon->getExpirationDate())
             ];
         }
 
