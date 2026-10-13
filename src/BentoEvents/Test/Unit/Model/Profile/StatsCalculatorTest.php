@@ -51,6 +51,10 @@ class StatsCalculatorTest extends TestCase
         $this->assertSame(IstDate::format('2025-01-10 05:00:00'), $f['first_order_date']);
         $this->assertSame(IstDate::format('2026-10-01 05:00:00'), $f['last_purchase_date']);
         $this->assertSame(IstDate::format('2025-01-10 05:00:00'), $f['customer_since'], 'guest: since first order');
+        // Bento fields are DateTime-typed: ISO-8601 with the IST offset
+        foreach (['first_order_date', 'last_purchase_date', 'customer_since'] as $k) {
+            $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+05:30$/', $f[$k], $k);
+        }
         $this->assertFalse($f['is_registered']);
         $this->assertArrayNotHasKey('last_order_date', $f, 'WISMO owns last_order_date');
     }

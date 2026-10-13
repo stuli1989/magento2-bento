@@ -34,6 +34,7 @@ class QuotePayloadMapper
             'financials' => [
                 'total_value' => Money::paise($grand),
                 'total_value_display' => Money::display($grand),
+                'total_display' => Money::display($grand), // name Bento flows use
                 'subtotal' => Money::paise($subtotal),
                 'subtotal_display' => Money::display($subtotal),
                 'discount_amount' => Money::paise(abs((float)($s['discount_amount'] ?? 0))),

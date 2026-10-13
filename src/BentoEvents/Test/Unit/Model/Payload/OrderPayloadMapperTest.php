@@ -23,6 +23,7 @@ class OrderPayloadMapperTest extends TestCase
         $this->assertSame(['amount' => 148860, 'currency' => 'INR'], $d['value']);
         $this->assertSame(148860, $d['financials']['total_value']);
         $this->assertSame('₹1,488.60', $d['financials']['total_value_display']);
+        $this->assertSame('₹1,488.60', $d['financials']['total_display'], 'flow-facing name (spec §4)');
         $this->assertSame(140000, $d['financials']['subtotal']);
         $this->assertSame('₹1,400.00', $d['financials']['subtotal_display']);
         $this->assertSame('₹88.60', $d['financials']['shipping_amount_display']);
@@ -37,6 +38,7 @@ class OrderPayloadMapperTest extends TestCase
         $this->assertSame('Cotman Watercolour 12 Tubes', $item['product_name']);
         $this->assertSame(50000, $item['product_price']);
         $this->assertSame('₹500.00', $item['price_display']);
+        $this->assertSame('₹500.00', $item['product_price_display'], 'flow-facing name (spec §4)');
         $this->assertSame(100000, $item['row_total']);
         $this->assertSame('₹1,000.00', $item['row_total_display']);
         $this->assertSame(2, $item['quantity']);

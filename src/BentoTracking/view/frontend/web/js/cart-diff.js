@@ -81,6 +81,7 @@
                 product_sku: it.product_sku,
                 product_name: it.product_name,
                 product_price: Math.round(price * 100),
+                product_price_display: rupees(price),
                 price_display: rupees(price),
                 quantity: q,
                 product_url: it.product_url || null,

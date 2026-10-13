@@ -88,11 +88,13 @@ class QuoteBuildersTest extends TestCase
         $e = $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->event;
 
         $this->assertSame('$checkout_abandoned', $e['type']);
-        $this->assertSame('dismissed', $e['details']['checkout_source']);
+        $this->assertSame('dismissed', $e['details']['abandon_source']);
+        $this->assertArrayNotHasKey('checkout_source', $e['details']);
         $this->assertSame('+919820012345', $e['details']['customer']['phone']);
         $this->assertSame('Kshitij', $e['fields']['first_name']);
         $this->assertSame('https://local/bento/cart/recover/recover/TOKEN', $e['details']['recovery_url']);
         $this->assertSame('₹1,488.60', $e['details']['financials']['total_value_display']);
+        $this->assertSame('₹1,488.60', $e['details']['financials']['total_display'], 'flow-facing name (spec §4)');
         $this->assertArrayNotHasKey('coupon', $e['details']);
     }
 
@@ -115,7 +117,7 @@ class QuoteBuildersTest extends TestCase
 
         $e = $b->build($this->row('checkout_abandoned', 'contact', 3, ['source' => 'contact_captured']))->event;
 
-        $this->assertSame('contact_captured', $e['details']['checkout_source']);
+        $this->assertSame('contact_captured', $e['details']['abandon_source']);
         $this->assertSame('+919000000001', $e['details']['customer']['phone']);
         $this->assertSame('cart+bentotest@x.com', $e['details']['customer']['email']);
     }
@@ -144,7 +146,10 @@ class QuoteBuildersTest extends TestCase
         $this->assertTrue($d['coupon_eligible']);
         $this->assertSame('BENTO-ABC234', $d['coupon']['code']);
         $this->assertSame('https://local/bento/cart/recover/recover/TOKEN', $d['recovery_url'], 'plain link never auto-applies the coupon');
-        $this->assertSame('https://local/bento/cart/recover/recover/TOKEN/coupon/BENTO-ABC234', $d['recovery_url_with_coupon']);
+        $this->assertSame('https://local/bento/cart/recover/recover/TOKEN/coupon/BENTO-ABC234', $d['coupon']['recovery_url']);
+        $this->assertSame('2026-10-20T15:30:00+05:30', $d['coupon']['expires_at']);
+        $this->assertSame('20 October', $d['coupon']['expires_at_display']);
+        $this->assertArrayNotHasKey('recovery_url_with_coupon', $d);
     }
 
     public function testConvertedOrEmptyCartIsSkipped(): void

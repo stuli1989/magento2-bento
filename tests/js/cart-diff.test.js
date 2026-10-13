@@ -39,6 +39,7 @@ t('payload paise + display + counts', () => {
     assert.strictEqual(p.subtotal_display, '₹1,488.60');
     assert.strictEqual(p.item_count, 3);
     assert.strictEqual(p.cart.items[1].product_price, 48860);
+    assert.strictEqual(p.cart.items[1].product_price_display, '₹488.60');
     assert.strictEqual(p.change, 'added');
 });
 console.log(`${n} passed`);

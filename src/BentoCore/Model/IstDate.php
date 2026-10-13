@@ -45,6 +45,22 @@ final class IstDate
         return self::format($value);
     }
 
+    /**
+     * "18 October" — the IST calendar day of a date, for emails (e.g. coupon.expires_at_display).
+     * ISO strings keep their own offset; DB strings are UTC.
+     */
+    public static function dayMonthOrNull(string|int|\DateTimeInterface|null $value): ?string
+    {
+        if ($value === null || $value === '' || $value === 0) {
+            return null;
+        }
+        if (is_string($value) && str_starts_with($value, '0000-00-00')) {
+            return null;
+        }
+        // format() yields an IST ISO string (an offset in the input wins over the UTC default).
+        return (new \DateTimeImmutable(self::format($value)))->format('j F');
+    }
+
     public static function now(): string
     {
         return self::format(time());

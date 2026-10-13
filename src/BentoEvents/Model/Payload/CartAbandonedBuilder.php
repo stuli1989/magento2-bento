@@ -3,14 +3,16 @@
  * $cart_abandoned — identified cart idle past the delay.
  *
  * coupon_eligible tells Bento whether the LAST recovery email may show the coupon (D6).
- * recovery_url never auto-applies a coupon; recovery_url_with_coupon (eligible carts only)
- * is for that last email — so earlier emails can't leak the discount.
+ * recovery_url never auto-applies a coupon. Eligible carts also get
+ * coupon{code, expires_at, expires_at_display, recovery_url}; coupon.recovery_url auto-applies the
+ * code and is used only by that last email — so earlier emails can't leak the discount.
  */
 
 declare(strict_types=1);
 
 namespace ArtLounge\BentoEvents\Model\Payload;
 
+use ArtLounge\BentoCore\Model\IstDate;
 use ArtLounge\BentoEvents\Model\Coupon\CouponGate;
 use ArtLounge\BentoEvents\Model\Outbox\OutboxRow;
 
@@ -44,13 +46,13 @@ class CartAbandonedBuilder implements BuilderInterface
         $decision = $this->couponGate->evaluate((float)$quote['subtotal'], $row->entityId, $row->storeId);
         $details['coupon_eligible'] = $decision['eligible'] && $decision['coupon'] !== null;
         if ($details['coupon_eligible']) {
-            $details['coupon'] = $decision['coupon'];
-            $details['recovery_url_with_coupon'] = $this->urls->build(
-                $row->entityId,
-                $row->email,
-                $row->storeId,
-                $decision['coupon']['code']
-            );
+            $coupon = $decision['coupon'];
+            $details['coupon'] = [
+                'code' => $coupon['code'],
+                'expires_at' => $coupon['expires_at'] ?? null,
+                'expires_at_display' => IstDate::dayMonthOrNull($coupon['expires_at'] ?? null),
+                'recovery_url' => $this->urls->build($row->entityId, $row->email, $row->storeId, $coupon['code']),
+            ];
         }
 
         return BuildResult::event($this->envelope->wrap(

@@ -3,7 +3,8 @@
  * $checkout_abandoned from either
  *  - entity "order": popup dismissed → Razorpay's pending_payment order (has email/phone/address), or
  *  - entity "contact": contact captured in the popup, then no payment/dismiss within the delay.
- * details.checkout_source = dismissed | contact_captured. Never carries a coupon.
+ * details.abandon_source = dismissed | contact_captured (details.source stays the generic "artlounge").
+ * Never carries a coupon.
  */
 
 declare(strict_types=1);
@@ -55,7 +56,7 @@ class CheckoutAbandonedBuilder implements BuilderInterface
         }
 
         $details = $this->mapper->details($snapshot);
-        $details['checkout_source'] = (string)$row->contextValue('source', $source);
+        $details['abandon_source'] = (string)$row->contextValue('source', $source);
         $details['recovery_url'] = $this->urls->build((int)$snapshot['quote_id'], $row->email, $row->storeId);
 
         return BuildResult::event($this->envelope->wrap(

@@ -45,6 +45,16 @@ class IstDateTest extends TestCase
         $this->assertNull(IstDate::formatOrNull('0000-00-00 00:00:00'));
     }
 
+    public function testDayMonthIsTheIstCalendarDay(): void
+    {
+        $this->assertSame('18 October', IstDate::dayMonthOrNull('2026-10-18T23:30:00+05:30'));
+        // 20:00 UTC on the 17th is already the 18th in IST (DB strings are UTC)
+        $this->assertSame('18 October', IstDate::dayMonthOrNull('2026-10-17 20:00:00'));
+        $this->assertSame('18 October', IstDate::dayMonthOrNull('2026-10-17T20:00:00+00:00'));
+        $this->assertNull(IstDate::dayMonthOrNull(null));
+        $this->assertNull(IstDate::dayMonthOrNull(''));
+    }
+
     public function testLexicalOrderMatchesChronologicalOrder(): void
     {
         // Bento flows compare these strings lexically.

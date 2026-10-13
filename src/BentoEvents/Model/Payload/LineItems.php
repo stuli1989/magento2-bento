@@ -26,6 +26,7 @@ final class LineItems
                 'product_sku' => $item['sku'] ?? null,
                 'product_name' => $item['name'] ?? null,
                 'product_price' => Money::paise($price),
+                'product_price_display' => Money::display($price),
                 'product_permalink' => $item['url'] ?? null,
                 'quantity' => $qty,
                 // Liquid-friendly aliases

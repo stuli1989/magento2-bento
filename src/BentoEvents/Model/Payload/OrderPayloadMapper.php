@@ -39,7 +39,10 @@ class OrderPayloadMapper
                 'shipping_amount' => (float)($o['shipping_amount'] ?? 0),
                 'discount_amount' => abs((float)($o['discount_amount'] ?? 0)),
                 'tax_amount' => (float)($o['tax_amount'] ?? 0),
-            ]) + ['currency_code' => $currency],
+            ]) + [
+                'total_display' => Money::display((float)$o['grand_total']), // name Bento flows use
+                'currency_code' => $currency,
+            ],
             'flags' => [
                 'discounted' => abs((float)($o['discount_amount'] ?? 0)) > 0.0001,
                 'is_virtual' => (bool)($o['is_virtual'] ?? false),

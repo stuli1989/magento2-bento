@@ -21,7 +21,8 @@ Redesign per `docs/superpowers/specs/2026-10-13-bento-plugin-redesign-design.md`
 - All amounts carry paise integers **and** `*_display` strings (₹1,488.60, Indian grouping). All dates ISO-8601 IST (`2026-10-13T15:30:00+05:30`) from one formatter.
 - Site-wide browser `$cart_updated` (customer-data cart diff, 3s debounce).
 - Test mode: email allow-list (globs); CLI `bento:outbox:status|replay|run|preview`, `bento:backfill`.
-- Coupons gated by cart threshold; `recovery_url` never carries the coupon, `recovery_url_with_coupon` (eligible carts only) does.
+- Coupons gated by cart threshold; `recovery_url` never carries the coupon. Eligible carts get `coupon{code, expires_at, expires_at_display, recovery_url}` — `coupon.recovery_url` auto-applies the code.
+- Flow contract names (Bento build specs): `financials.total_display`, `cart.items[].product_price_display`, `$checkout_abandoned` `abandon_source` (`dismissed` / `contact_captured`).
 
 ### Fixed
 - Secret key is decrypted before use (v1 sent the encrypted config value).
