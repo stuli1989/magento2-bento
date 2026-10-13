@@ -15,6 +15,9 @@
     <preference for="ArtLounge\BentoCore\Api\BentoClientInterface"
                 type="ArtLounge\BentoCore\Model\BentoClient"/>
 
+    <preference for="ArtLounge\BentoCore\Model\Http\TransportInterface"
+                type="ArtLounge\BentoCore\Model\Http\CurlTransport"/>
+
     <!-- Virtual Type for Bento Logger -->
     <virtualType name="ArtLoungeBentoLogger" type="Magento\Framework\Logger\Monolog">
         <arguments>
