@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="default">
+        <!-- Drain the outbox (DB lock, ≤100 rows, ≤30s). Idle run = one indexed SELECT. -->
+        <job name="artlounge_bento_outbox_send" instance="ArtLounge\BentoEvents\Cron\SendOutbox" method="execute">
+            <schedule>* * * * *</schedule>
+        </job>
+        <!-- Contact-capture timeouts + idle identified carts -->
+        <job name="artlounge_bento_abandonment" instance="ArtLounge\BentoEvents\Cron\Abandonment" method="execute">
+            <schedule>*/5 * * * *</schedule>
+        </job>
+        <!-- Missing purchases, contact-capture health, cleanup (03:15 server time) -->
+        <job name="artlounge_bento_reconcile" instance="ArtLounge\BentoEvents\Cron\Reconcile" method="execute">
+            <schedule>15 3 * * *</schedule>
+        </job>
+        <!-- Expired / old used recovery coupons -->
+        <job name="artlounge_bento_coupon_cleanup" instance="ArtLounge\BentoEvents\Cron\CouponCleanup" method="execute">
+            <schedule>0 4 * * *</schedule>
+        </job>
+    </group>
+</config>

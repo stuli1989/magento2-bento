@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * All server events enqueue AFTER commit (rolled-back saves never emit) and never throw.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <event name="sales_order_save_commit_after">
+        <observer name="artlounge_bento_order_state" instance="ArtLounge\BentoEvents\Observer\OrderSaveCommitAfter"/>
+    </event>
+    <event name="sales_order_creditmemo_save_commit_after">
+        <observer name="artlounge_bento_refund" instance="ArtLounge\BentoEvents\Observer\CreditmemoSaveCommitAfter"/>
+    </event>
+    <event name="newsletter_subscriber_save_commit_after">
+        <observer name="artlounge_bento_newsletter" instance="ArtLounge\BentoEvents\Observer\SubscriberSaveCommitAfter"/>
+    </event>
+    <event name="customer_register_success">
+        <observer name="artlounge_bento_account_created" instance="ArtLounge\BentoEvents\Observer\CustomerRegisterSuccess"/>
+    </event>
+</config>

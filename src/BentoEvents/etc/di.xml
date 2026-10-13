@@ -1,0 +1,99 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <preference for="ArtLounge\BentoEvents\Model\Outbox\OutboxStoreInterface"
+                type="ArtLounge\BentoEvents\Model\Outbox\DbOutboxStore"/>
+    <preference for="ArtLounge\BentoEvents\Model\Purchase\PurchaseMarkerStoreInterface"
+                type="ArtLounge\BentoEvents\Model\Purchase\DbPurchaseMarkerStore"/>
+    <preference for="ArtLounge\BentoEvents\Model\Abandonment\AbandonmentQueriesInterface"
+                type="ArtLounge\BentoEvents\Model\Abandonment\AbandonmentQueries"/>
+    <preference for="ArtLounge\BentoEvents\Model\Razorpay\CheckoutContextInterface"
+                type="ArtLounge\BentoEvents\Model\Razorpay\CheckoutContext"/>
+
+    <!-- Session-backed context must not be instantiated eagerly (CLI/cron) -->
+    <type name="ArtLounge\BentoEvents\Model\Razorpay\CheckoutContext">
+        <arguments>
+            <argument name="checkoutSession" xsi:type="object">Magento\Checkout\Model\Session\Proxy</argument>
+            <argument name="customerSession" xsi:type="object">Magento\Customer\Model\Session\Proxy</argument>
+        </arguments>
+    </type>
+
+    <!-- Outbox event_type => payload builder -->
+    <virtualType name="ArtLoungeBentoPurchaseBuilder" type="ArtLounge\BentoEvents\Model\Payload\OrderEventBuilder">
+        <arguments>
+            <argument name="bentoType" xsi:type="string">$purchase</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="ArtLoungeBentoCanceledBuilder" type="ArtLounge\BentoEvents\Model\Payload\OrderEventBuilder">
+        <arguments>
+            <argument name="bentoType" xsi:type="string">$OrderCanceled</argument>
+        </arguments>
+    </virtualType>
+    <type name="ArtLounge\BentoEvents\Model\Payload\BuilderPool">
+        <arguments>
+            <argument name="builders" xsi:type="array">
+                <item name="purchase" xsi:type="object">ArtLoungeBentoPurchaseBuilder</item>
+                <item name="order_canceled" xsi:type="object">ArtLoungeBentoCanceledBuilder</item>
+                <item name="refund" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\RefundBuilder</item>
+                <item name="checkout_started" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\CheckoutStartedBuilder</item>
+                <item name="checkout_abandoned" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\CheckoutAbandonedBuilder</item>
+                <item name="cart_abandoned" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\CartAbandonedBuilder</item>
+                <item name="subscribe" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\SubscribeBuilder</item>
+                <item name="unsubscribe" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\SubscribeBuilder</item>
+                <item name="account_created" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\AccountCreatedBuilder</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Razorpay Magic Checkout controller plugins -->
+    <type name="Razorpay\Magento\Controller\OneClick\PlaceOrder">
+        <plugin name="artlounge_bento_checkout_started" type="ArtLounge\BentoEvents\Plugin\Razorpay\PlaceOrderPlugin" sortOrder="1000"/>
+    </type>
+    <type name="Razorpay\Magento\Controller\OneClick\AbandonedQuote">
+        <plugin name="artlounge_bento_checkout_abandoned" type="ArtLounge\BentoEvents\Plugin\Razorpay\AbandonedQuotePlugin" sortOrder="1000"/>
+    </type>
+
+    <!-- Everything logs to var/log/bento.log -->
+    <type name="ArtLounge\BentoEvents\Model\Outbox\Enqueuer"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Model\Outbox\Sender"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Model\Purchase\PurchaseDetector"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Plugin\Razorpay\PlaceOrderPlugin"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Plugin\Razorpay\AbandonedQuotePlugin"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Model\Checkout\ContactCaptureHandler"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Cron\SendOutbox"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Cron\Abandonment"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Cron\Reconcile"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Cron\CouponCleanup"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Model\Abandonment\ContactTimeoutProcessor"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Model\Abandonment\IdleCartProcessor"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Service\CouponService"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Model\Coupon\RuleManager"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Controller\Cart\Recover"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Observer\CreditmemoSaveCommitAfter"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Observer\SubscriberSaveCommitAfter"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Observer\CustomerRegisterSuccess"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+
+    <!-- CLI -->
+    <type name="Magento\Framework\Console\CommandListInterface">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="bento_outbox_status" xsi:type="object">ArtLounge\BentoEvents\Console\Command\OutboxStatusCommand</item>
+                <item name="bento_outbox_replay" xsi:type="object">ArtLounge\BentoEvents\Console\Command\OutboxReplayCommand</item>
+                <item name="bento_outbox_run" xsi:type="object">ArtLounge\BentoEvents\Console\Command\OutboxRunCommand</item>
+                <item name="bento_outbox_preview" xsi:type="object">ArtLounge\BentoEvents\Console\Command\OutboxPreviewCommand</item>
+                <item name="bento_backfill" xsi:type="object">ArtLounge\BentoEvents\Console\Command\BackfillCommand</item>
+            </argument>
+        </arguments>
+    </type>
+    <!-- CLI commands are constructed for every bin/magento call: keep them cheap -->
+    <type name="ArtLounge\BentoEvents\Console\Command\BackfillCommand">
+        <arguments><argument name="backfill" xsi:type="object">ArtLounge\BentoEvents\Model\Profile\Backfill\Proxy</argument></arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Console\Command\OutboxRunCommand">
+        <arguments><argument name="sender" xsi:type="object">ArtLounge\BentoEvents\Model\Outbox\Sender\Proxy</argument></arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Console\Command\OutboxPreviewCommand">
+        <arguments><argument name="builders" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\BuilderPool\Proxy</argument></arguments>
+    </type>
+</config>
