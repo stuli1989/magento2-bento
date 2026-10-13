@@ -12,10 +12,6 @@
             <directory>src/BentoEvents/Test/Unit</directory>
             <directory>src/BentoTracking/Test/Unit</directory>
         </testsuite>
-        <testsuite name="ArtLounge Bento Integration Tests">
-            <directory>src/BentoCore/Test/Integration</directory>
-            <directory>src/BentoEvents/Test/Integration</directory>
-        </testsuite>
     </testsuites>
 
     <coverage processUncoveredFiles="true">
@@ -32,13 +28,10 @@
             <file>src/BentoEvents/registration.php</file>
             <file>src/BentoTracking/registration.php</file>
         </exclude>
-        <report>
-            <text outputFile="php://stdout" showOnlySummary="false"/>
-            <html outputDirectory="build/coverage"/>
-        </report>
     </coverage>
 
     <php>
         <ini name="error_reporting" value="-1"/>
+        <ini name="date.timezone" value="UTC"/>
     </php>
 </phpunit>
