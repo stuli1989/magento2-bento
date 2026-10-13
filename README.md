@@ -1,119 +1,63 @@
-# Bento Integration for Magento 2
+# Bento Integration for Magento 2 (v2)
 
-Connect your Magento 2 store with [Bento](https://bentonow.com) email marketing using reliable, non-blocking async event queues.
+Sends Art Lounge's store activity to [Bento](https://bentonow.com) — reliably, without RabbitMQ,
+and without ever slowing or breaking checkout. Design spec: `docs/superpowers/specs/2026-10-13-bento-plugin-redesign-design.md`
+(BentoAutomationsToBuild repo). v1 architecture notes: `docs/architecture-v1.md` (historical).
 
-## What It Does
+## How it works
 
-This package automatically sends customer activity from your Magento store to Bento for email marketing automation. Events are processed through RabbitMQ queues so they never slow down your store.
-
-### Server-Side Events
-
-| Magento Event | Bento Event | Trigger |
-|---------------|-------------|---------|
-| Order Placed | `$purchase` | Customer completes checkout |
-| Order Shipped | `$OrderShipped` | Shipment created |
-| Order Refunded | `$OrderRefunded` | Credit memo created |
-| Customer Registered | `$Subscriber` | New account created |
-| Newsletter Subscribe | `$subscribe` | Email subscribed |
-| Newsletter Unsubscribe | `$unsubscribe` | Email unsubscribed |
-| Abandoned Cart | `$cart_abandoned` | Cart idle for configured time |
-
-### Client-Side Events
-
-| Event | Bento Event | Trigger |
-|-------|-------------|---------|
-| Product View | `$view` | Customer views product page |
-| Add to Cart | `$addToCart` | Customer adds item to cart |
-| Checkout Started | `$checkoutStarted` | Customer enters checkout |
-| Purchase (fallback) | `$purchase` | Success page (deduplicated with server-side) |
-
-## Requirements
-
-- PHP 8.1+
-- Magento 2.4.4+
-- RabbitMQ 3.8+ (or Magento database queue fallback)
-- [Aligent Async Events](https://github.com/aligent/magento-async-events) ^3.0
-- Bento account with Site UUID, Publishable Key, and Secret Key
-
-## Installation
-
-```bash
-composer require artlounge/magento2-bento
-bin/magento module:enable ArtLounge_BentoCore ArtLounge_BentoEvents ArtLounge_BentoTracking
-bin/magento setup:upgrade
-bin/magento setup:di:compile
-bin/magento cache:flush
+```
+observers (after commit) / Razorpay controller plugins / POST /bento/checkout/contact
+      │  one INSERT IGNORE into artlounge_bento_outbox (event, entity id, email, dedup_key) — never throws
+      ▼
+cron artlounge_bento_outbox_send (every minute, DB lock, ≤100 rows, ≤30 s)
+      │  test-mode filter → payload builder → POST /batch/subscribers (profile fields) → POST /batch/events
+      ▼
+2xx sent · 4xx parked (body kept) · 5xx/timeout retry 1m, 5m, 30m, 2h, 12h → parked
 ```
 
-## Configuration
+## Events
 
-Navigate to **Stores > Configuration > Art Lounge > Bento Integration** in Magento Admin.
+| Event | Source | When |
+|---|---|---|
+| `$view` | browser | PDP view, once per product per day |
+| `$cart_updated` | browser | any cart change anywhere (customer-data diff, 3 s debounce) |
+| `$checkout_started` | server | Magic Checkout popup opened by a logged-in customer (once per quote) |
+| `$checkout_abandoned` | server | popup dismissed (Razorpay `pending_payment` order) or contact captured and no payment within the delay |
+| `$cart_abandoned` | server cron | identified cart idle ≥ delay, ≥ min value; `coupon_eligible` + coupon only above the threshold |
+| `$purchase` | server | order first reaches processing/complete (COD or captured prepaid); `unique.key` = increment id |
+| `$OrderCanceled` | server | order canceled after a `$purchase` |
+| `$OrderRefunded` | server | credit memo |
+| `$subscribe` / `$unsubscribe` | server | newsletter status change |
+| `$account_created` | server | customer registration |
 
-### Required Settings
+The plugin sends **no tags**. Every amount has a paise integer and a `*_display` twin (`₹1,488.60`).
+Every date is ISO-8601 IST (`2026-10-13T15:30:00+05:30`) from one formatter (`BentoCore\Model\IstDate`).
 
-| Setting | Path | Description |
-|---------|------|-------------|
-| Enable | General > Enable | Master on/off switch |
-| Site UUID | General > Site UUID | Your Bento site identifier |
-| Publishable Key | General > Publishable Key | Client-side API key |
-| Secret Key | General > Secret Key | Server-side API key (stored encrypted) |
+Profile fields pushed with purchase/cancel/refund/account events and by `bento:backfill`:
+`order_count, lifetime_spend, aov, first_order_date, last_purchase_date, last_order_number,
+customer_since, is_registered, top_categories, primary_medium, first_name, last_name, phone`.
 
-### Optional Settings
-
-- **Orders** — Toggle tracking for placed, shipped, cancelled, refunded orders. Configure tax inclusion and currency multiplier.
-- **Customers** — Toggle tracking for customer creation/updates. Add default tags.
-- **Newsletter** — Toggle subscribe/unsubscribe tracking.
-- **Abandoned Cart** — Set delay (minutes), minimum cart value, and whether email is required.
-
-### Test Your Connection
-
-After entering your API keys, click **Test Connection** in the admin config to verify your credentials.
-
-## Queue Consumers
-
-Start the async event consumers (production environments should use Supervisor):
+## Operating it
 
 ```bash
-bin/magento queue:consumers:start event.trigger.consumer
-bin/magento queue:consumers:start event.retry.consumer
+bin/magento bento:outbox:status                 # counts, oldest pending, parked rows, contact-capture health
+bin/magento bento:outbox:preview --id=123       # exact JSON a row would send (no send)
+bin/magento bento:outbox:run                    # one send pass now
+bin/magento bento:outbox:replay --parked        # or --id=123 (repeatable)
+bin/magento bento:backfill --dry-run [--email-pattern='*+bentotest*@*'] [--resume]
 ```
 
-Check queue status:
+**Test mode:** Stores › Configuration › ArtLounge › Bento Integration › General › *Test Mode: Email
+Allow-list*. When set (e.g. `*+bentotest*@*`), only matching emails are sent; others are marked
+`skipped`. Leave empty on production.
+
+## Development
 
 ```bash
-rabbitmqctl list_queues name messages consumers
+composer install -d tests/tools          # PHPUnit + Mockery (no repo.magento.com needed)
+php tests/tools/vendor/bin/phpunit -c phpunit.xml
+node tests/js/cart-diff.test.js
 ```
 
-## CLI Commands
-
-```bash
-bin/magento bento:test                     # Test API connection
-bin/magento bento:status                   # Show config and queue status
-bin/magento bento:abandoned-cart:process    # Manually process pending carts
-bin/magento bento:abandoned-cart:cleanup    # Remove old schedule entries
-bin/magento bento:deadletter:replay        # Replay failed events
-```
-
-## Reliability Features
-
-- **Outbox fallback** — If RabbitMQ is unreachable, events are stored in a database outbox and retried automatically when the broker recovers.
-- **Dead-letter replay** — Events that fail after max retries can be replayed via CLI or monitored by cron.
-- **Smart retry prevention** — Permanent failures (400, 401, 403) are not retried; transient failures (429, 5xx, network errors) are retried with exponential backoff.
-- **Abandoned cart detection** — Configurable delay, minimum value, and HMAC-signed recovery links.
-- **Event deduplication** — All events include unique keys to prevent duplicate processing.
-
-## Varnish / Full Page Cache Compatibility
-
-All client-side tracking is Varnish-safe. Templates render no user-specific data in HTML — all customer identification happens via Magento's private content AJAX system (`customerData`).
-
-## Architecture
-
-See [docs/architecture.md](docs/architecture.md) for a detailed walkthrough of how the three modules work together, the event flow, retry system, and design decisions.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, running tests, and pull request guidelines.
-
-## License
-
-[MIT](LICENSE)
+Unit tests run against stubs in `tests/Stubs` — no Magento bootstrap.
