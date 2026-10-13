@@ -5,3 +5,5 @@
 /.cursor/
 .phpunit.result.cache
 composer.lock
+/tests/tools/vendor/
+/tests/tools/composer.lock

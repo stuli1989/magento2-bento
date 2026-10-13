@@ -1,0 +1,9 @@
+{
+    "name": "artlounge/magento2-bento-test-tools",
+    "description": "Standalone test tooling (PHPUnit + Mockery). The root package requires magento/* which needs repo.magento.com auth; unit tests run against tests/Stubs instead.",
+    "require": {
+        "phpunit/phpunit": "^9.6",
+        "mockery/mockery": "^1.6"
+    },
+    "config": { "sort-packages": true }
+}
