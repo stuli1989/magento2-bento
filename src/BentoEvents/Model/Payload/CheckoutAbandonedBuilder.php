@@ -33,7 +33,7 @@ class CheckoutAbandonedBuilder implements BuilderInterface
             if ($snapshot === null) {
                 return BuildResult::skip('order ' . $row->entityId . ' not found');
             }
-            if (in_array($snapshot['state'] ?? '', PurchaseDetector::PAID_STATES, true)) {
+            if (in_array($snapshot['state'] ?? '', PurchaseDetector::EVER_PAID_STATES, true)) {
                 return BuildResult::skip('paid since dismissal');
             }
             $source = 'dismissed';

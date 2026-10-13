@@ -20,7 +20,7 @@ class AbandonmentQueries implements AbandonmentQueriesInterface
         return (bool)$c->fetchOne(
             $c->select()->from($this->resource->getTableName('sales_order'), ['entity_id'])
                 ->where('quote_id = ?', $quoteId)
-                ->where('state IN (?)', PurchaseDetector::PAID_STATES)
+                ->where('state IN (?)', PurchaseDetector::EVER_PAID_STATES)
                 ->limit(1)
         );
     }

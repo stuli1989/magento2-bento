@@ -21,6 +21,8 @@ use Psr\Log\LoggerInterface;
 class PurchaseDetector
 {
     public const PAID_STATES = ['processing', 'complete'];
+    /** Was paid at some point (closed = fully refunded). Used to cancel abandonment, never to emit $purchase. */
+    public const EVER_PAID_STATES = ['processing', 'complete', 'closed'];
     private const MAX_AGE_SECONDS = 7 * 86400;
 
     public function __construct(
