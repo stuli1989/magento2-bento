@@ -54,6 +54,7 @@
         <column xsi:type="varchar" name="increment_id" nullable="false" length="50" comment="Increment ID"/>
         <column xsi:type="varchar" name="email" nullable="false" length="255" comment="Lower-cased email"/>
         <column xsi:type="datetime" name="purchased_at" nullable="false" comment="First seen paid (UTC)"/>
+        <column xsi:type="smallint" name="seeded" unsigned="true" nullable="false" default="0" comment="1 = historic order seeded on install (never emitted)"/>
         <constraint xsi:type="primary" referenceId="PRIMARY">
             <column name="order_id"/>
         </constraint>

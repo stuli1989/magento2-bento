@@ -102,7 +102,8 @@
             "order_id": true,
             "increment_id": true,
             "email": true,
-            "purchased_at": true
+            "purchased_at": true,
+            "seeded": true
         },
         "index": {
             "ARTLOUNGE_BENTO_PURCHASE_EMAIL": true
