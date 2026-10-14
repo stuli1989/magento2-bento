@@ -37,6 +37,10 @@ interface ConfigInterface
     public function isContactCaptureEnabled(?int $storeId = null): bool;
     public function includeBrand(?int $storeId = null): bool;
 
+    // Reviews
+    /** $review_submitted: master switch AND reviews/enabled. */
+    public function isReviewEventsEnabled(?int $storeId = null): bool;
+
     // Abandonment
     public function isAbandonedCartEnabled(?int $storeId = null): bool;
     public function getCartDelayMinutes(?int $storeId = null): int;

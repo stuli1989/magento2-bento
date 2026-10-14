@@ -112,6 +112,24 @@ class SenderTest extends TestCase
         $this->assertCount(1, $this->eventCalls);
     }
 
+    public function testRowWithoutEmailIsBuiltThenFilteredOnTheResolvedEmail(): void
+    {
+        // e.g. a guest $review_submitted: the email is only known after the builder resolves the bento uuid
+        $this->testMode = new TestMode(['*+bentotest*@*']);
+        $real = $this->queue('');
+        $this->buildResult = BuildResult::event(['type' => '$review_submitted', 'email' => 'real.customer@gmail.com']);
+        $this->sender()->run();
+        $this->assertSame('skipped', $this->store->statusOf($real));
+        $this->assertStringContainsString('test mode', $this->store->rows[$real]['last_error']);
+        $this->assertCount(0, $this->eventCalls);
+
+        $test = $this->queue('');
+        $this->buildResult = BuildResult::event(['type' => '$review_submitted', 'email' => 'guest+bentotest@x.com']);
+        $this->sender()->run();
+        $this->assertSame('sent', $this->store->statusOf($test));
+        $this->assertCount(1, $this->eventCalls);
+    }
+
     public function testBuilderSkipReasonMarksSkipped(): void
     {
         $id = $this->queue();

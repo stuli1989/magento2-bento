@@ -135,6 +135,12 @@ class TrackingDataTest extends TestCase
         $this->assertTrue($viewModel->isProductViewEnabled());
     }
 
+    public function testReviewAttributionFollowsTheReviewEventsFlag(): void
+    {
+        $viewModel = $this->createViewModel(null);
+        $this->assertTrue($viewModel->isReviewAttributionEnabled());
+    }
+
     public function testGetCurrencyCodeReturnsStoreCode(): void
     {
         $viewModel = $this->createViewModel(null);
@@ -169,6 +175,7 @@ class TrackingDataTest extends TestCase
         $config->method('getBrandAttribute')->willReturn('brand');
         $config->method('isTrackingEnabled')->willReturn(true);
         $config->method('isTrackViewsEnabled')->willReturn(true);
+        $config->method('isReviewEventsEnabled')->willReturn(true);
         $config->method('includeBrand')->willReturn(true);
 
         $registry->method('registry')->with('current_product')->willReturn($product);

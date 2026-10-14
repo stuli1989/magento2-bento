@@ -110,4 +110,14 @@ class ConfigTest extends TestCase
         $this->assertSame(2500.0, $this->config->getCouponThreshold());
         $this->assertSame(2, $this->config->getContactCaptureDelayMinutes());
     }
+
+    public function testReviewEventsRequireMasterSwitchAndTheirOwnFlag(): void
+    {
+        $this->values['artlounge_bento/reviews/enabled'] = '1';
+        $this->assertFalse($this->config->isReviewEventsEnabled());
+        $this->values['artlounge_bento/general/enabled'] = '1';
+        $this->assertTrue($this->config->isReviewEventsEnabled());
+        $this->values['artlounge_bento/reviews/enabled'] = '0';
+        $this->assertFalse($this->config->isReviewEventsEnabled());
+    }
 }

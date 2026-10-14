@@ -35,6 +35,24 @@ class BentoClient implements BentoClientInterface
         return $this->post('/batch/subscribers', ['subscribers' => array_values($subscribers)], $storeId);
     }
 
+    public function fetchSubscriberByUuid(string $uuid, ?int $storeId = null): SendResult
+    {
+        if (!$this->config->isConfigured($storeId)) {
+            return SendResult::notConfigured();
+        }
+        $url = self::API_BASE_URL . '/fetch/subscribers?site_uuid=' . rawurlencode((string)$this->config->getSiteUuid($storeId))
+            . '&uuid=' . rawurlencode($uuid);
+        try {
+            $raw = $this->transport->request('GET', $url, $this->headers($storeId), null, $this->config->getTimeout());
+        } catch (\Throwable $e) {
+            $raw = ['status' => 0, 'body' => '', 'error' => $e->getMessage()];
+        }
+        $result = new SendResult((int)$raw['status'], (string)$raw['body'], $raw['error'] ?? null);
+        $this->config->debug('Bento GET /fetch/subscribers (uuid)', ['result' => $result->describe()], $storeId);
+
+        return $result;
+    }
+
     public function testConnection(?int $storeId = null): array
     {
         if (!$this->config->isConfigured($storeId)) {

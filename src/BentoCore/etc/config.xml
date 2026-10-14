@@ -40,6 +40,9 @@
                 <include_brand>1</include_brand>
                 <brand_attribute>manufacturer</brand_attribute>
             </tracking>
+            <reviews>
+                <enabled>1</enabled>
+            </reviews>
             <profile>
                 <!-- category_id=medium. Deepest mapped ancestor of a product's category wins.
                      Derived from the live category tree 2026-10-13. Unmapped categories are ignored. -->

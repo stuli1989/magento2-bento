@@ -133,4 +133,29 @@ class BentoClientTest extends TestCase
         $this->assertSame('{"error":"bad"}', $r->getBody());
         $this->assertStringContainsString('422', $r->describe());
     }
+
+    public function testFetchSubscriberByUuidIsAReadOnlyGet(): void
+    {
+        $this->nextResponse = ['status' => 200, 'body' => '{"data":{"attributes":{"email":"a@b.c"}}}', 'error' => null];
+
+        $result = $this->client->fetchSubscriberByUuid('9f1c-uuid', 1);
+
+        $this->assertTrue($result->isSuccess());
+        $call = $this->calls[0];
+        $this->assertSame('GET', $call['method']);
+        $this->assertSame('https://app.bentonow.com/api/v1/fetch/subscribers?site_uuid=site-123&uuid=9f1c-uuid', $call['url']);
+        $this->assertNull($call['body']);
+        $this->assertContains('Authorization: Basic ' . base64_encode('pk:sk'), $call['headers']);
+        $this->assertSame('{"data":{"attributes":{"email":"a@b.c"}}}', $result->getBody());
+    }
+
+    public function testFetchSubscriberByUuidEncodesTheUuidAndClassifiesErrors(): void
+    {
+        $this->nextResponse = ['status' => 0, 'body' => '', 'error' => 'timeout'];
+
+        $result = $this->client->fetchSubscriberByUuid('a b&c', null);
+
+        $this->assertStringEndsWith('&uuid=a%20b%26c', $this->calls[0]['url']);
+        $this->assertTrue($result->isRetryable());
+    }
 }

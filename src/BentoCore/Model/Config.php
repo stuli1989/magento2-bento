@@ -136,6 +136,13 @@ class Config implements ConfigInterface
         return $this->flag('tracking/include_brand', $storeId);
     }
 
+    // ---------- Reviews ----------
+
+    public function isReviewEventsEnabled(?int $storeId = null): bool
+    {
+        return $this->isEnabled($storeId) && $this->flag('reviews/enabled', $storeId);
+    }
+
     // ---------- Abandonment ----------
 
     public function isAbandonedCartEnabled(?int $storeId = null): bool

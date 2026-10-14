@@ -54,6 +54,15 @@ class EnqueuerTest extends TestCase
         $this->assertCount(0, $this->store->rows);
     }
 
+    public function testEmailLessRowIsAllowedOnlyWithABentoUuidToResolveAtSendTime(): void
+    {
+        $this->assertTrue($this->enqueuer->enqueue('review_submitted', 'review', 7, '', 1, 'review_submitted:7', ['bento_uuid' => 'abcdef12']));
+        $this->assertSame('', $this->store->rows[1]['email']);
+        $this->assertSame('{"bento_uuid":"abcdef12"}', $this->store->rows[1]['context']);
+        $this->assertFalse($this->enqueuer->enqueue('review_submitted', 'review', 8, '', 1, 'review_submitted:8', ['bento_uuid' => '']));
+        $this->assertCount(1, $this->store->rows);
+    }
+
     public function testDatabaseFailureIsSwallowedAndLogged(): void
     {
         $this->store->throwOnInsert = true;

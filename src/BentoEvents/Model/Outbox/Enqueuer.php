@@ -23,7 +23,10 @@ class Enqueuer
     }
 
     /**
-     * @return bool true when a new row was queued (false: duplicate, disabled, no email, or error)
+     * $email may be '' only when $context['bento_uuid'] is set: the recipient is then resolved from
+     * Bento at send time (guest $review_submitted).
+     *
+     * @return bool true when a new row was queued (false: duplicate, disabled, no identity, or error)
      */
     public function enqueue(
         string $eventType,
@@ -37,7 +40,8 @@ class Enqueuer
     ): bool {
         try {
             $email = strtolower(trim($email));
-            if ($email === '' || !$this->config->isEnabled($storeId ?: null)) {
+            $resolvable = $email === '' && is_string($context['bento_uuid'] ?? null) && $context['bento_uuid'] !== '';
+            if (($email === '' && !$resolvable) || !$this->config->isEnabled($storeId ?: null)) {
                 return false;
             }
             $now = time();

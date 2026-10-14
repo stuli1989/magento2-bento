@@ -78,6 +78,15 @@
                 </field>
             </group>
 
+            <group id="reviews" translate="label" sortOrder="25" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Product Reviews</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Send $review_submitted</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Fires when a shopper submits a product review on the storefront. Logged-in reviewers are identified by their account email; guests only via the <code>bento_uuid</code> Bento adds to email links (remembered in a first-party cookie by the browser layer, so Browser Tracking must be on). Guests with no identity are not sent.]]></comment>
+                </field>
+            </group>
+
             <group id="abandoned_cart" translate="label" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Abandonment &amp; Coupons</label>
                 <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">

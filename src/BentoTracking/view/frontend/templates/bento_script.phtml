@@ -247,6 +247,9 @@ if ($viewModel->isCartTrackingEnabled()) {
 if ($viewModel->isContactCaptureEnabled()) {
     $modules['ArtLounge_BentoTracking/js/contact-capture'] = ['url' => $block->getUrl('bento/checkout/contact')];
 }
+if ($viewModel->isReviewAttributionEnabled()) {
+    $modules['ArtLounge_BentoTracking/js/bento-uuid'] = new \stdClass();
+}
 ?>
 <?php if ($modules): ?>
 <?php ob_start(); ?>

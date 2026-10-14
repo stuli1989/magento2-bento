@@ -75,8 +75,9 @@ class Sender
 
     private function process(OutboxRow $row): string
     {
+        // Rows without an email (guest review → bento_uuid) are filtered on the email the builder resolves.
         $testMode = $this->config->getTestMode();
-        if (!$testMode->allows($row->email)) {
+        if ($row->email !== '' && !$testMode->allows($row->email)) {
             $this->store->markSkipped($row->id, 'test mode: email not in allow-list');
             return 'skipped';
         }
@@ -95,6 +96,10 @@ class Sender
 
         if ($built->isSkip()) {
             $this->store->markSkipped($row->id, (string)$built->skipReason);
+            return 'skipped';
+        }
+        if ($row->email === '' && !$testMode->allows((string)($built->event['email'] ?? ''))) {
+            $this->store->markSkipped($row->id, 'test mode: email not in allow-list');
             return 'skipped';
         }
 

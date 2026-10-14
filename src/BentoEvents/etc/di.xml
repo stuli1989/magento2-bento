@@ -42,6 +42,7 @@
                 <item name="subscribe" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\SubscribeBuilder</item>
                 <item name="unsubscribe" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\SubscribeBuilder</item>
                 <item name="account_created" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\AccountCreatedBuilder</item>
+                <item name="review_submitted" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\ReviewSubmittedBuilder</item>
             </argument>
         </arguments>
     </type>
@@ -82,6 +83,7 @@
     <type name="ArtLounge\BentoEvents\Observer\CreditmemoSaveCommitAfter"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
     <type name="ArtLounge\BentoEvents\Observer\SubscriberSaveCommitAfter"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
     <type name="ArtLounge\BentoEvents\Observer\CustomerRegisterSuccess"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Observer\ReviewSaveCommitAfter"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
 
     <!-- CLI -->
     <type name="Magento\Framework\Console\CommandListInterface">

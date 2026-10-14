@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Storefront-only server events. A review saved on the storefront is a shopper's submission;
+ * admin edits/approvals (adminhtml) never fire $review_submitted.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <event name="review_save_commit_after">
+        <observer name="artlounge_bento_review_submitted" instance="ArtLounge\BentoEvents\Observer\ReviewSaveCommitAfter"/>
+    </event>
+</config>

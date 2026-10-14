@@ -56,6 +56,12 @@ class TrackingData implements ArgumentInterface
         return $this->config->isContactCaptureEnabled($this->getStoreId());
     }
 
+    /** Remember the email-click bento_uuid so guest reviews can be attributed ($review_submitted). */
+    public function isReviewAttributionEnabled(): bool
+    {
+        return $this->config->isReviewEventsEnabled($this->getStoreId());
+    }
+
     /**
      * Get Bento publishable key
      */
