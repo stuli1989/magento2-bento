@@ -24,6 +24,21 @@ Redesign per `docs/superpowers/specs/2026-10-13-bento-plugin-redesign-design.md`
 - Coupons gated by cart threshold; `recovery_url` never carries the coupon. Eligible carts get `coupon{code, expires_at, expires_at_display, recovery_url}` — `coupon.recovery_url` auto-applies the code.
 - Flow contract names (Bento build specs): `financials.total_display`, `cart.items[].product_price_display`, `$checkout_abandoned` `abandon_source` (`dismissed` / `contact_captured`).
 
+### Added — email design (The Order Sheet) support, 2026-10-14
+- **Snapshot fields on the subscriber** (event `fields`, so the flows no longer need per-slot Update Field nodes):
+  `$cart_abandoned` / `$checkout_abandoned` → `last_cart_item_{1..5}_{name,qty,price_display,url,image_url}`,
+  `last_cart_item_count`, `last_cart_subtotal` (paise), `last_cart_subtotal_display`, `last_cart_recovery_url`;
+  `$cart_abandoned` also `last_cart_coupon_{eligible,code,url,expires}`. `$purchase` →
+  `last_order_item_{1..5}_{name,qty,url,image_url}`, `last_order_item_count`. Unused slots are sent as `''`.
+- **Email thumbnails**: every `items[].product_image_url` (and the `*_image_url` fields) is the product's
+  thumbnail → small_image → image → configurable parent's image, as a resized cache URL built by Magento's
+  image UrlBuilder under frontend store emulation (image id `wishlist_small_image`, 113×113, set in di.xml;
+  host = the store's media base URL). Configurable lines prefer the chosen variant's picture.
+- **`$review_submitted`** (storefront review saves): `product{sku,name,url,image_url}`, `rating` 1–5 / null,
+  `review_id`, `status`, `nickname`. Guests are attributed via the email-click `bento_uuid` (browser module
+  `bento-uuid.js` → first-party cookie `al_bento_uuid`), resolved to an email at send time with
+  `GET /fetch/subscribers?uuid=`; no identity → not sent. Admin: Product Reviews › Send $review_submitted.
+
 ### Fixed
 - Secret key is decrypted before use (v1 sent the encrypted config value).
 - `summary.product_categories` is always a JSON list.

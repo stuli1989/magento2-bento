@@ -30,9 +30,21 @@ cron artlounge_bento_outbox_send (every minute, DB lock, ≤100 rows, ≤30 s)
 | `$OrderRefunded` | server | credit memo |
 | `$subscribe` / `$unsubscribe` | server | newsletter status change |
 | `$account_created` | server | customer registration |
+| `$review_submitted` | server | product review submitted on the storefront (logged-in → account email; guest → email-click `bento_uuid`, else not sent) |
 
 The plugin sends **no tags**. Every amount has a paise integer and a `*_display` twin (`₹1,488.60`).
 Every date is ISO-8601 IST (`2026-10-13T15:30:00+05:30`) from one formatter (`BentoCore\Model\IstDate`).
+
+**Snapshot fields** (event `fields`, applied to the subscriber; templates read `visitor.*`). Always 5 slots,
+unused slots `''`:
+- `$cart_abandoned`, `$checkout_abandoned`: `last_cart_item_{1..5}_{name,qty,price_display,url,image_url}`,
+  `last_cart_item_count`, `last_cart_subtotal` (paise), `last_cart_subtotal_display`, `last_cart_recovery_url`;
+  `$cart_abandoned` only: `last_cart_coupon_eligible` (`yes`/`no`), `last_cart_coupon_code`, `last_cart_coupon_url`,
+  `last_cart_coupon_expires`.
+- `$purchase`: `last_order_item_{1..5}_{name,qty,url,image_url}`, `last_order_item_count`.
+
+`*_image_url` / `items[].product_image_url` = thumbnail → small_image → image → configurable parent, as a
+113 px cached URL on the store's media host (`ThumbnailUrlBuilder`, image id in `di.xml`); `''` when none.
 
 Profile fields pushed with purchase/cancel/refund/account events and by `bento:backfill`:
 `order_count, lifetime_spend, aov, first_order_date, last_purchase_date, last_order_number,
@@ -58,6 +70,7 @@ Allow-list*. When set (e.g. `*+bentotest*@*`), only matching emails are sent; ot
 composer install -d tests/tools          # PHPUnit + Mockery (no repo.magento.com needed)
 php tests/tools/vendor/bin/phpunit -c phpunit.xml
 node tests/js/cart-diff.test.js
+node tests/js/bento-uuid.test.js
 ```
 
 Unit tests run against stubs in `tests/Stubs` — no Magento bootstrap.
