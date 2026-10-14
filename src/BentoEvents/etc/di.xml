@@ -46,6 +46,15 @@
         </arguments>
     </type>
 
+    <!-- Email thumbnails: an image id from the storefront theme's view.xml (Luma: 113x113). Only
+         configured sizes get cache files, so never put an ad-hoc size here. -->
+    <type name="ArtLounge\BentoEvents\Model\Payload\ThumbnailUrlBuilder">
+        <arguments>
+            <argument name="imageId" xsi:type="string">wishlist_small_image</argument>
+            <argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument>
+        </arguments>
+    </type>
+
     <!-- Razorpay Magic Checkout controller plugins -->
     <type name="Razorpay\Magento\Controller\OneClick\PlaceOrder">
         <plugin name="artlounge_bento_checkout_started" type="ArtLounge\BentoEvents\Plugin\Razorpay\PlaceOrderPlugin" sortOrder="1000"/>

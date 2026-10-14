@@ -50,11 +50,25 @@ class OrderSnapshotLoader
             }
             $visible[] = $item;
         }
-        $catalog = $this->catalog->forProducts(array_map(static fn ($i) => (int)$i->getProductId(), $visible), $storeId);
+        $variants = [];
+        foreach ($visible as $item) {
+            if ($item->getProductType() === 'configurable') {
+                foreach ((array)$item->getChildrenItems() as $child) {
+                    $variants[(int)$item->getItemId()] = (int)$child->getProductId();
+                    break;
+                }
+            }
+        }
+        $catalog = $this->catalog->forProducts(
+            array_merge(array_map(static fn ($i) => (int)$i->getProductId(), $visible), array_values($variants)),
+            $storeId
+        );
 
         $items = [];
         foreach ($visible as $item) {
             $facts = $catalog[(int)$item->getProductId()] ?? [];
+            // The chosen variant's picture first (e.g. the colour bought), else the parent's.
+            $variantImage = $catalog[$variants[(int)$item->getItemId()] ?? 0]['image'] ?? null;
             $items[] = [
                 'item_id' => (int)$item->getItemId(),
                 'product_id' => (int)$item->getProductId(),
@@ -64,7 +78,7 @@ class OrderSnapshotLoader
                 'price' => (float)$item->getPrice(),
                 'row_total' => (float)$item->getRowTotal(),
                 'url' => $facts['url'] ?? null,
-                'image' => $facts['image'] ?? null,
+                'image' => $variantImage ?? $facts['image'] ?? null,
                 'brand' => $facts['brand'] ?? null,
                 'categories' => $facts['categories'] ?? [],
             ];

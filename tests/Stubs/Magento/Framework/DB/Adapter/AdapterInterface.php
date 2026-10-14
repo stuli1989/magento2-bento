@@ -11,5 +11,8 @@ interface AdapterInterface
     public function select();
     public function fetchOne($select);
     public function fetchAll($select);
+    public function fetchPairs($select, $bind = []);
+    public function fetchRow($select, $bind = []);
+    public function fetchCol($select, $bind = []);
     public function delete($table, $where = []);
 }
