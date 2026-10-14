@@ -95,4 +95,32 @@ class OrderBuildersTest extends TestCase
         $this->assertSame('100045', $r->event['details']['order']['increment_id']);
         $this->assertNotNull($r->subscriber);
     }
+
+    public function testPurchaseWritesTheOrderSnapshotOntoTheSubscriber(): void
+    {
+        $this->loader->method('load')->with(45)->willReturn(Fixtures::order());
+        $builder = new OrderEventBuilder('$purchase', $this->loader, new OrderPayloadMapper(), $this->envelope, $this->profile);
+
+        $f = $builder->build($this->row('purchase', 'purchase:100045'))->event['fields'];
+
+        $this->assertSame('Cotman Watercolour 12 Tubes', $f['last_order_item_1_name']);
+        $this->assertSame(2, $f['last_order_item_1_qty']);
+        $this->assertSame('https://x/cotman', $f['last_order_item_1_url']);
+        $this->assertSame('https://x/m.jpg', $f['last_order_item_1_image_url']);
+        $this->assertSame('Round Brush 6', $f['last_order_item_2_name']);
+        $this->assertSame('', $f['last_order_item_2_image_url']);
+        $this->assertSame('', $f['last_order_item_5_name']);
+        $this->assertSame(2, $f['last_order_item_count']);
+        $this->assertSame('Kshitij', $f['first_name']);
+    }
+
+    public function testCanceledOrderLeavesTheOrderSnapshotAlone(): void
+    {
+        $this->loader->method('load')->willReturn(Fixtures::order(['state' => 'canceled']));
+        $builder = new OrderEventBuilder('$OrderCanceled', $this->loader, new OrderPayloadMapper(), $this->envelope, $this->profile);
+
+        $f = $builder->build($this->row('order_canceled', 'order_canceled:45'))->event['fields'];
+
+        $this->assertArrayNotHasKey('last_order_item_1_name', $f);
+    }
 }

@@ -165,4 +165,66 @@ class QuoteBuildersTest extends TestCase
             $this->assertTrue($b->build($this->row('cart_abandoned', 'quote', 9001))->isSkip());
         }
     }
+
+    public function testCartAbandonedWritesTheCartSnapshotAndCouponFieldsOntoTheSubscriber(): void
+    {
+        $this->quotes->method('load')->willReturn($this->quote());
+        $this->couponDecision = ['eligible' => true, 'coupon' => ['code' => 'BENTO-ABC234', 'expires_at' => '2026-10-20T15:30:00+05:30']];
+        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope);
+
+        $f = $b->build($this->row('cart_abandoned', 'quote', 9001))->event['fields'];
+
+        $this->assertSame('Ravi', $f['first_name']);
+        $this->assertSame('Cotman Watercolour 12 Tubes', $f['last_cart_item_1_name']);
+        $this->assertSame(2, $f['last_cart_item_1_qty']);
+        $this->assertSame('₹500.00', $f['last_cart_item_1_price_display']);
+        $this->assertSame('https://x/cotman', $f['last_cart_item_1_url']);
+        $this->assertSame('https://x/m.jpg', $f['last_cart_item_1_image_url']);
+        $this->assertSame('', $f['last_cart_item_2_url']);
+        $this->assertSame('', $f['last_cart_item_3_name']);
+        $this->assertSame(2, $f['last_cart_item_count']);
+        $this->assertSame(250000, $f['last_cart_subtotal']);
+        $this->assertSame('₹2,500.00', $f['last_cart_subtotal_display']);
+        $this->assertSame('https://local/bento/cart/recover/recover/TOKEN', $f['last_cart_recovery_url']);
+        $this->assertSame('yes', $f['last_cart_coupon_eligible']);
+        $this->assertSame('BENTO-ABC234', $f['last_cart_coupon_code']);
+        $this->assertSame('https://local/bento/cart/recover/recover/TOKEN/coupon/BENTO-ABC234', $f['last_cart_coupon_url']);
+        $this->assertSame('20 October', $f['last_cart_coupon_expires']);
+    }
+
+    public function testCartAbandonedBelowThresholdBlanksCouponFields(): void
+    {
+        $this->quotes->method('load')->willReturn($this->quote());
+        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope);
+
+        $f = $b->build($this->row('cart_abandoned', 'quote', 9001))->event['fields'];
+
+        $this->assertSame('no', $f['last_cart_coupon_eligible']);
+        $this->assertSame('', $f['last_cart_coupon_code']);
+        $this->assertSame('', $f['last_cart_coupon_url']);
+    }
+
+    public function testCheckoutAbandonedWritesTheCartSnapshotButNoCouponFields(): void
+    {
+        $this->orders->method('load')->with(45)->willReturn(Fixtures::order(['state' => 'pending_payment']));
+        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
+            new QuotePayloadMapper(), $this->urls, $this->envelope);
+
+        $f = $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->event['fields'];
+
+        $this->assertSame('Round Brush 6', $f['last_cart_item_2_name']);
+        $this->assertSame(2, $f['last_cart_item_count']);
+        $this->assertSame(140000, $f['last_cart_subtotal']);
+        $this->assertSame('https://local/bento/cart/recover/recover/TOKEN', $f['last_cart_recovery_url']);
+        $this->assertArrayNotHasKey('last_cart_coupon_code', $f, 'checkout emails never touch coupon fields');
+    }
+
+    public function testCheckoutStartedDoesNotOverwriteTheCartSnapshot(): void
+    {
+        $this->quotes->method('load')->willReturn($this->quote());
+        $b = new CheckoutStartedBuilder($this->quotes, new QuotePayloadMapper(), $this->envelope);
+        $e = $b->build($this->row('checkout_started', 'quote', 9001))->event;
+
+        $this->assertArrayNotHasKey('last_cart_item_1_name', $e['fields'] ?? []);
+    }
 }

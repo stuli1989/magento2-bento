@@ -6,6 +6,8 @@
  * recovery_url never auto-applies a coupon. Eligible carts also get
  * coupon{code, expires_at, expires_at_display, recovery_url}; coupon.recovery_url auto-applies the
  * code and is used only by that last email — so earlier emails can't leak the discount.
+ *
+ * Also writes the cart snapshot + coupon fields onto the subscriber (SnapshotFields) for the templates.
  */
 
 declare(strict_types=1);
@@ -55,12 +57,16 @@ class CartAbandonedBuilder implements BuilderInterface
             ];
         }
 
+        $snapshot = SnapshotFields::cart($details['cart']['items'], (float)$quote['subtotal'], $details['recovery_url'])
+            + SnapshotFields::cartCoupon($details['coupon'] ?? null);
+
         return BuildResult::event($this->envelope->wrap(
             $row,
             '$cart_abandoned',
             $details,
             null,
-            $this->mapper->fields($quote)
+            $this->mapper->fields($quote),
+            $snapshot
         ));
     }
 }

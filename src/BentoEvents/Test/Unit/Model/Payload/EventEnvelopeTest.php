@@ -48,6 +48,15 @@ class EventEnvelopeTest extends TestCase
         $this->assertArrayNotHasKey('fields', $e);
     }
 
+    public function testSnapshotFieldsKeepEmptyStringsSoStaleSlotsAreCleared(): void
+    {
+        $e = $this->envelope()->wrap($this->row(), '$cart_abandoned', [], null, ['first_name' => '', 'phone' => '+91'],
+            ['last_cart_item_2_name' => '', 'last_cart_item_count' => 1, 'last_cart_item_1_name' => 'A']);
+
+        $this->assertSame(['phone' => '+91', 'last_cart_item_2_name' => '', 'last_cart_item_count' => 1,
+            'last_cart_item_1_name' => 'A'], $e['fields'], 'profile blanks dropped, snapshot blanks kept');
+    }
+
     public function testDetailsCannotOverrideEnvelopeKeys(): void
     {
         $e = $this->envelope()->wrap($this->row(), '$x', ['source' => 'dismissed', 'timestamp' => 'bogus']);

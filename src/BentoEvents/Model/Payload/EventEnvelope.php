@@ -5,6 +5,10 @@
  *
  * details.timestamp = when it happened (outbox created_at), via the shared IstDate formatter —
  * the same formatter used for last_purchase_date, so Bento flow exits can compare them lexically.
+ *
+ * $fields (profile: name, phone…) drop null AND '' so they never blank a value Bento already has.
+ * $snapshotFields (SnapshotFields: last_cart_item_*, last_order_item_*) keep '' on purpose — a blank
+ * slot must overwrite the line an older, longer cart left behind.
  */
 
 declare(strict_types=1);
@@ -21,14 +25,21 @@ class EventEnvelope
     {
     }
 
-    public function wrap(OutboxRow $row, string $type, array $details, ?string $uniqueKey = null, array $fields = []): array
-    {
+    public function wrap(
+        OutboxRow $row,
+        string $type,
+        array $details,
+        ?string $uniqueKey = null,
+        array $fields = [],
+        array $snapshotFields = []
+    ): array {
         $details['unique'] = ['key' => $uniqueKey ?? $row->dedupKey];
         $details['source'] = $this->config->getSource($row->storeId ?: null);
         $details['timestamp'] = IstDate::format($row->createdAt);
 
         $event = ['type' => $type, 'email' => $row->email];
-        $fields = array_filter($fields, static fn ($v) => $v !== null && $v !== '');
+        $fields = array_filter($fields, static fn ($v) => $v !== null && $v !== '')
+            + array_filter($snapshotFields, static fn ($v) => $v !== null);
         if ($fields) {
             $event['fields'] = $fields;
         }

@@ -4,7 +4,8 @@
  *  - entity "order": popup dismissed → Razorpay's pending_payment order (has email/phone/address), or
  *  - entity "contact": contact captured in the popup, then no payment/dismiss within the delay.
  * details.abandon_source = dismissed | contact_captured (details.source stays the generic "artlounge").
- * Never carries a coupon.
+ * Never carries a coupon (and never touches the last_cart_coupon_* fields).
+ * Writes the cart snapshot fields onto the subscriber (SnapshotFields) for the templates.
  */
 
 declare(strict_types=1);
@@ -64,7 +65,8 @@ class CheckoutAbandonedBuilder implements BuilderInterface
             '$checkout_abandoned',
             $details,
             null,
-            $this->mapper->fields($snapshot)
+            $this->mapper->fields($snapshot),
+            SnapshotFields::cart($details['cart']['items'], (float)($snapshot['subtotal'] ?? 0), $details['recovery_url'])
         ));
     }
 }

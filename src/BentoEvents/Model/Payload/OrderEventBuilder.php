@@ -1,6 +1,8 @@
 <?php
 /**
  * $purchase and $OrderCanceled (configured twice in di.xml with different $bentoType).
+ * Only $purchase writes the order snapshot fields (last_order_item_*) — a cancel must not replace
+ * the snapshot of the order the post-purchase emails are about.
  */
 
 declare(strict_types=1);
@@ -32,8 +34,11 @@ class OrderEventBuilder implements BuilderInterface
             ? (string)$order['increment_id'] // lets Bento dedupe a resend of the same purchase
             : $row->dedupKey;
 
+        $details = $this->mapper->details($order);
+        $snapshot = $this->bentoType === '$purchase' ? SnapshotFields::order($details['cart']['items']) : [];
+
         return BuildResult::event(
-            $this->envelope->wrap($row, $this->bentoType, $this->mapper->details($order), $uniqueKey, $fields),
+            $this->envelope->wrap($row, $this->bentoType, $details, $uniqueKey, $fields, $snapshot),
             $this->profile->subscriberRecord($row->email, $fields)
         );
     }
