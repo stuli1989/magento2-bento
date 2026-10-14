@@ -36,7 +36,7 @@ final class SnapshotFields
             $p = 'last_cart_item_' . $n . '_';
             $fields[$p . 'name'] = self::str($item['product_name'] ?? null);
             $fields[$p . 'qty'] = $item ? (int)$item['quantity'] : '';
-            $fields[$p . 'price_display'] = self::str($item['product_price_display'] ?? null);
+            $fields[$p . 'price_display'] = self::str($item['row_total_display'] ?? null); // line total, so the rows add up to the subtotal
             $fields[$p . 'url'] = self::str($item['product_url'] ?? null);
             $fields[$p . 'image_url'] = self::str($item['product_image_url'] ?? null);
         }

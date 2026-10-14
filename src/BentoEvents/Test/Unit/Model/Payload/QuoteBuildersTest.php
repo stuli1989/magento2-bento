@@ -177,7 +177,7 @@ class QuoteBuildersTest extends TestCase
         $this->assertSame('Ravi', $f['first_name']);
         $this->assertSame('Cotman Watercolour 12 Tubes', $f['last_cart_item_1_name']);
         $this->assertSame(2, $f['last_cart_item_1_qty']);
-        $this->assertSame('₹500.00', $f['last_cart_item_1_price_display']);
+        $this->assertSame('₹1,000.00', $f['last_cart_item_1_price_display']);
         $this->assertSame('https://x/cotman', $f['last_cart_item_1_url']);
         $this->assertSame('https://x/m.jpg', $f['last_cart_item_1_image_url']);
         $this->assertSame('', $f['last_cart_item_2_url']);
