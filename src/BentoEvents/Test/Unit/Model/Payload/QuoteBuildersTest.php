@@ -83,7 +83,7 @@ class QuoteBuildersTest extends TestCase
     {
         $this->orders->method('load')->with(45)->willReturn(Fixtures::order(['state' => 'pending_payment', 'quote_id' => 9001]));
         $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
-            new QuotePayloadMapper(), $this->urls, $this->envelope);
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope);
 
         $e = $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->event;
 
@@ -95,14 +95,54 @@ class QuoteBuildersTest extends TestCase
         $this->assertSame('https://local/bento/cart/recover/recover/TOKEN', $e['details']['recovery_url']);
         $this->assertSame('₹1,488.60', $e['details']['financials']['total_value_display']);
         $this->assertSame('₹1,488.60', $e['details']['financials']['total_display'], 'flow-facing name (spec §4)');
+        $this->assertFalse($e['details']['coupon_eligible']);
         $this->assertArrayNotHasKey('coupon', $e['details']);
+    }
+
+    public function testCheckoutAbandonedEligibleCarriesCouponAndSeparateCouponUrl(): void
+    {
+        $this->orders->method('load')->with(45)->willReturn(Fixtures::order(['state' => 'pending_payment', 'quote_id' => 9001]));
+        $this->couponDecision = ['eligible' => true, 'coupon' => ['code' => 'BENTO-ABC234', 'expires_at' => '2026-10-20T15:30:00+05:30']];
+        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope);
+
+        $e = $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->event;
+
+        $this->assertTrue($e['details']['coupon_eligible']);
+        $this->assertSame('BENTO-ABC234', $e['details']['coupon']['code']);
+        $this->assertSame('2026-10-20T15:30:00+05:30', $e['details']['coupon']['expires_at']);
+        $this->assertSame('20 October', $e['details']['coupon']['expires_at_display']);
+        $this->assertSame('https://local/bento/cart/recover/recover/TOKEN/coupon/BENTO-ABC234', $e['details']['coupon']['recovery_url']);
+        $this->assertSame('https://local/bento/cart/recover/recover/TOKEN', $e['details']['recovery_url'], 'main link never auto-applies');
+        $this->assertSame('yes', $e['fields']['last_cart_coupon_eligible']);
+        $this->assertSame('BENTO-ABC234', $e['fields']['last_cart_coupon_code']);
+        $this->assertSame('https://local/bento/cart/recover/recover/TOKEN/coupon/BENTO-ABC234', $e['fields']['last_cart_coupon_url']);
+        $this->assertSame('20 October', $e['fields']['last_cart_coupon_expires']);
+    }
+
+    public function testCheckoutAbandonedAsksTheGateForTheSameQuoteAsTheCartEvent(): void
+    {
+        // Both events key the coupon on the quote id, so CouponService finds the code that
+        // $cart_abandoned already issued for this quote instead of minting a second one.
+        $contacts = $this->createMock(ContactStore::class);
+        $contacts->method('getById')->willReturn(['id' => 3, 'quote_id' => 9001, 'email' => 'cart+bentotest@x.com', 'phone' => null]);
+        $this->quotes->method('load')->with(9001)->willReturn($this->quote(['subtotal' => 3200.0]));
+        $this->orders->method('load')->willReturn(Fixtures::order(['state' => 'pending_payment', 'quote_id' => 9001, 'subtotal' => 3200.0]));
+        $gate = $this->createMock(CouponGate::class);
+        $gate->expects($this->exactly(2))->method('evaluate')->with(3200.0, 9001, 1)
+            ->willReturn(['eligible' => false, 'coupon' => null]);
+
+        foreach ([['contact', 3], ['order', 45]] as [$type, $id]) {
+            (new CheckoutAbandonedBuilder($this->orders, $this->quotes, $contacts, new QuotePayloadMapper(), $this->urls, $gate, $this->envelope))
+                ->build($this->row('checkout_abandoned', $type, $id));
+        }
     }
 
     public function testDismissedOrderPaidSinceIsSkipped(): void
     {
         $this->orders->method('load')->willReturn(Fixtures::order(['state' => 'processing']));
         $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
-            new QuotePayloadMapper(), $this->urls, $this->envelope);
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope);
         $this->assertTrue($b->build($this->row('checkout_abandoned', 'order', 45))->isSkip());
     }
 
@@ -113,7 +153,7 @@ class QuoteBuildersTest extends TestCase
             'id' => 3, 'quote_id' => 9001, 'rzp_order_id' => 'order_X1', 'email' => 'cart+bentotest@x.com', 'phone' => '+919000000001',
         ]);
         $this->quotes->method('load')->with(9001)->willReturn($this->quote(['email' => null, 'phone' => null]));
-        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $contacts, new QuotePayloadMapper(), $this->urls, $this->envelope);
+        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $contacts, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope);
 
         $e = $b->build($this->row('checkout_abandoned', 'contact', 3, ['source' => 'contact_captured']))->event;
 
@@ -204,11 +244,11 @@ class QuoteBuildersTest extends TestCase
         $this->assertSame('', $f['last_cart_coupon_url']);
     }
 
-    public function testCheckoutAbandonedWritesTheCartSnapshotButNoCouponFields(): void
+    public function testCheckoutAbandonedWritesTheCartSnapshotAndBlanksCouponFieldsWhenNotEligible(): void
     {
         $this->orders->method('load')->with(45)->willReturn(Fixtures::order(['state' => 'pending_payment']));
         $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
-            new QuotePayloadMapper(), $this->urls, $this->envelope);
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope);
 
         $f = $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->event['fields'];
 
@@ -216,7 +256,8 @@ class QuoteBuildersTest extends TestCase
         $this->assertSame(2, $f['last_cart_item_count']);
         $this->assertSame(140000, $f['last_cart_subtotal']);
         $this->assertSame('https://local/bento/cart/recover/recover/TOKEN', $f['last_cart_recovery_url']);
-        $this->assertArrayNotHasKey('last_cart_coupon_code', $f, 'checkout emails never touch coupon fields');
+        $this->assertSame('no', $f['last_cart_coupon_eligible']);
+        $this->assertSame('', $f['last_cart_coupon_code'], 'an earlier cart\'s coupon must not resurface');
     }
 
     public function testCheckoutStartedDoesNotOverwriteTheCartSnapshot(): void

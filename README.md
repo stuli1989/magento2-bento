@@ -23,7 +23,7 @@ cron artlounge_bento_outbox_send (every minute, DB lock, ≤100 rows, ≤30 s)
 | `$view` | browser | PDP view, once per product per day |
 | `$cart_updated` | browser | any cart change anywhere (customer-data diff, 3 s debounce) |
 | `$checkout_started` | server | Magic Checkout popup opened by a logged-in customer (once per quote) |
-| `$checkout_abandoned` | server | popup dismissed (Razorpay `pending_payment` order) or contact captured and no payment within the delay |
+| `$checkout_abandoned` | server | popup dismissed (Razorpay `pending_payment` order) or contact captured and no payment within the delay; same coupon gate as `$cart_abandoned`, reusing the quote's code if it already has one |
 | `$cart_abandoned` | server cron | identified cart idle ≥ delay, ≥ min value; `coupon_eligible` + coupon only above the threshold |
 | `$purchase` | server | order first reaches processing/complete (COD or captured prepaid); `unique.key` = increment id |
 | `$OrderCanceled` | server | order canceled after a `$purchase` |
@@ -39,7 +39,7 @@ Every date is ISO-8601 IST (`2026-10-13T15:30:00+05:30`) from one formatter (`Be
 unused slots `''`:
 - `$cart_abandoned`, `$checkout_abandoned`: `last_cart_item_{1..5}_{name,qty,price_display,url,image_url}`,
   `last_cart_item_count`, `last_cart_subtotal` (paise), `last_cart_subtotal_display`, `last_cart_recovery_url`;
-  `$cart_abandoned` only: `last_cart_coupon_eligible` (`yes`/`no`), `last_cart_coupon_code`, `last_cart_coupon_url`,
+  both: `last_cart_coupon_eligible` (`yes`/`no`), `last_cart_coupon_code`, `last_cart_coupon_url`,
   `last_cart_coupon_expires`.
 - `$purchase`: `last_order_item_{1..5}_{name,qty,url,image_url}`, `last_order_item_count`.
 

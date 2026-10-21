@@ -4,15 +4,22 @@
  *  - entity "order": popup dismissed → Razorpay's pending_payment order (has email/phone/address), or
  *  - entity "contact": contact captured in the popup, then no payment/dismiss within the delay.
  * details.abandon_source = dismissed | contact_captured (details.source stays the generic "artlounge").
- * Never carries a coupon (and never touches the last_cart_coupon_* fields).
- * Writes the cart snapshot fields onto the subscriber (SnapshotFields) for the templates.
+ *
+ * Coupon: same gate as $cart_abandoned (CouponGate: enabled AND subtotal ≥ threshold). Eligible
+ * checkouts get coupon_eligible + coupon{code, expires_at, expires_at_display, recovery_url}, where
+ * coupon.recovery_url auto-applies the code and details.recovery_url never does. The code is keyed
+ * on the quote, so a quote that already got one from $cart_abandoned reuses it — never a second code.
+ *
+ * Writes the cart snapshot + coupon fields onto the subscriber (SnapshotFields) for the templates.
  */
 
 declare(strict_types=1);
 
 namespace ArtLounge\BentoEvents\Model\Payload;
 
+use ArtLounge\BentoCore\Model\IstDate;
 use ArtLounge\BentoEvents\Model\Checkout\ContactStore;
+use ArtLounge\BentoEvents\Model\Coupon\CouponGate;
 use ArtLounge\BentoEvents\Model\Outbox\OutboxRow;
 use ArtLounge\BentoEvents\Model\Purchase\PurchaseDetector;
 
@@ -24,6 +31,7 @@ class CheckoutAbandonedBuilder implements BuilderInterface
         private readonly ContactStore $contacts,
         private readonly QuotePayloadMapper $mapper,
         private readonly RecoveryUrlBuilder $urls,
+        private readonly CouponGate $couponGate,
         private readonly EventEnvelope $envelope
     ) {
     }
@@ -58,7 +66,21 @@ class CheckoutAbandonedBuilder implements BuilderInterface
 
         $details = $this->mapper->details($snapshot);
         $details['abandon_source'] = (string)$row->contextValue('source', $source);
-        $details['recovery_url'] = $this->urls->build((int)$snapshot['quote_id'], $row->email, $row->storeId);
+        $quoteId = (int)$snapshot['quote_id'];
+        $subtotal = (float)($snapshot['subtotal'] ?? 0);
+        $details['recovery_url'] = $this->urls->build($quoteId, $row->email, $row->storeId);
+
+        $decision = $this->couponGate->evaluate($subtotal, $quoteId, $row->storeId);
+        $details['coupon_eligible'] = $decision['eligible'] && $decision['coupon'] !== null;
+        if ($details['coupon_eligible']) {
+            $coupon = $decision['coupon'];
+            $details['coupon'] = [
+                'code' => $coupon['code'],
+                'expires_at' => $coupon['expires_at'] ?? null,
+                'expires_at_display' => IstDate::dayMonthOrNull($coupon['expires_at'] ?? null),
+                'recovery_url' => $this->urls->build($quoteId, $row->email, $row->storeId, $coupon['code']),
+            ];
+        }
 
         return BuildResult::event($this->envelope->wrap(
             $row,
@@ -66,7 +88,8 @@ class CheckoutAbandonedBuilder implements BuilderInterface
             $details,
             null,
             $this->mapper->fields($snapshot),
-            SnapshotFields::cart($details['cart']['items'], (float)($snapshot['subtotal'] ?? 0), $details['recovery_url'])
+            SnapshotFields::cart($details['cart']['items'], $subtotal, $details['recovery_url'])
+                + SnapshotFields::cartCoupon($details['coupon'] ?? null)
         ));
     }
 }

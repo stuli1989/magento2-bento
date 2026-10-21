@@ -49,7 +49,7 @@ final class SnapshotFields
     }
 
     /**
-     * $cart_abandoned only (D5/D6). Eligible → the code, its auto-apply link and the expiry day;
+     * $cart_abandoned and $checkout_abandoned (D5/D6). Eligible → the code, its auto-apply link and the expiry day;
      * otherwise blanked so an earlier cart's coupon can't resurface.
      *
      * @param array|null $coupon details.coupon {code, recovery_url, expires_at_display} or null

@@ -1,7 +1,8 @@
 <?php
 /**
- * Coupon gating for $cart_abandoned only: enabled AND cart subtotal ≥ threshold → issue
- * (or reuse) the quote's unique single-use code. Small carts never get a coupon row.
+ * Coupon gating for $cart_abandoned and $checkout_abandoned: enabled AND cart subtotal ≥ threshold →
+ * issue (or reuse) the quote's unique single-use code. One code per quote, whichever event asks first.
+ * Small carts never get a coupon row.
  */
 
 declare(strict_types=1);
