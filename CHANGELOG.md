@@ -4,6 +4,18 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.0.1] — 2026-10-21
+
+The recovery emails promise the ₹200 code comes "on top of your automatic discount", so the code must always stack with the discount ladder (rules 680–682, priority 100+).
+
+### Fixed
+- **Managed coupon rule priority 1000 → 1** (`RuleManager`), `stop_rules_processing` stays off. At 1000 the code ran after the ladder, so one ladder rule set to "discard subsequent rules" would silently kill it. At 1 it runs after rule 744 (priority 0, "discounted items get no other discount") and before the ladder, and both apply. An existing rule is moved on its next use (`ensureRule`, called before every coupon is issued) and on admin config save (`syncRuleFromConfig`), so no manual admin edit is needed.
+
+### Added
+- **`$checkout_abandoned` carries the coupon**, through the same `CouponGate` as `$cart_abandoned` (same threshold, single-use code, expiry): `coupon_eligible`, `coupon{code, expires_at, expires_at_display, recovery_url}` (only `coupon.recovery_url` auto-applies the code) and the subscriber fields `last_cart_coupon_{eligible,code,url,expires}` for CO-03C. The code is keyed on the quote, so a quote that already got one from `$cart_abandoned` reuses it and never gets a second code. Below the threshold the coupon fields are blanked, as on `$cart_abandoned`.
+
+---
+
 ## [2.0.0] — 2026-10-13
 
 Redesign per `docs/superpowers/specs/2026-10-13-bento-plugin-redesign-design.md` (BentoAutomationsToBuild repo).
