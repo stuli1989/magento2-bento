@@ -18,7 +18,12 @@ class RuleManager
     private const MANAGED_RULE_NAME = 'Bento: Abandoned Cart Recovery';
     private const MANAGED_RULE_DESCRIPTION = 'Auto-managed by Bento integration. Configure via Stores > Configuration > Art Lounge > Bento Integration > Abandoned Cart.';
     private const CONFIG_PATH_MANAGED_RULE_ID = 'artlounge_bento/abandoned_cart/coupon_managed_rule_id';
-    private const SORT_ORDER = 1000;
+    /**
+     * Priority 1: after the priority-0 "discounted items get no other discount" rule, before the
+     * automatic discount ladder (100+). With stop_rules_processing off, the ladder still applies,
+     * so the code always stacks on top of it — even if a ladder rule ever discards subsequent rules.
+     */
+    private const SORT_ORDER = 1;
 
     public function __construct(
         private readonly ConfigInterface $config,
@@ -44,6 +49,7 @@ class RuleManager
             $rule = $this->ruleFactory->create();
             $this->ruleResource->load($rule, $ruleId);
             if ($rule->getId()) {
+                $this->enforcePriorityOnExisting($rule);
                 return (int)$rule->getId();
             }
             $this->logger->warning('Bento managed rule was deleted, recreating', [
@@ -92,6 +98,7 @@ class RuleManager
         $rule->setToDate(null);
         $rule->setWebsiteIds($this->getAllWebsiteIds());
         $rule->setCustomerGroupIds($this->getAllCustomerGroupIds());
+        $this->applyPriority($rule);
 
         $this->setMinSubtotalCondition($rule, $minSubtotal);
 
@@ -130,8 +137,7 @@ class RuleManager
             $rule->setSimpleAction($discountType);
             $rule->setDiscountAmount($discountAmount);
             $rule->setDiscountStep(0);
-            $rule->setStopRulesProcessing(false);
-            $rule->setSortOrder(self::SORT_ORDER);
+            $this->applyPriority($rule);
             $rule->setWebsiteIds($this->getAllWebsiteIds());
             $rule->setCustomerGroupIds($this->getAllCustomerGroupIds());
             $rule->setFromDate(null);
@@ -159,6 +165,38 @@ class RuleManager
                 'error' => $e->getMessage()
             ]);
             return null;
+        }
+    }
+
+    private function applyPriority(Rule $rule): void
+    {
+        $rule->setSortOrder(self::SORT_ORDER);
+        $rule->setStopRulesProcessing(false);
+    }
+
+    /**
+     * Rules created before v2.0.1 sit at priority 1000. Move them on first use, so the fix lands
+     * without anyone re-saving the admin config. A failed save keeps the rule usable as it was.
+     */
+    private function enforcePriorityOnExisting(Rule $rule): void
+    {
+        if ((int)$rule->getSortOrder() === self::SORT_ORDER && !$rule->getStopRulesProcessing()) {
+            return;
+        }
+        $from = (int)$rule->getSortOrder();
+        $this->applyPriority($rule);
+        try {
+            $this->ruleResource->save($rule);
+            $this->logger->info('Bento managed rule priority corrected', [
+                'rule_id' => (int)$rule->getId(),
+                'from' => $from,
+                'to' => self::SORT_ORDER
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->error('Bento managed rule: failed to correct priority', [
+                'rule_id' => (int)$rule->getId(),
+                'error' => $e->getMessage()
+            ]);
         }
     }
 

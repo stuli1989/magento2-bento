@@ -8,4 +8,5 @@ interface StoreManagerInterface
 {
     public function getStore();
     public function getDefaultStoreView();
+    public function getWebsites($withDefault = false, $codeKey = false);
 }
