@@ -51,7 +51,7 @@ Profile fields pushed with purchase/cancel/refund/account events and by `bento:b
 customer_since, is_registered, top_categories, primary_medium, first_name, last_name, phone`.
 
 Next picks (same pushes, plus a nightly refresh at 03:45 of every buyer from the last 30 days):
-`next_pick_{1..3}_{name,url,image_url}` — parent product name, storefront URL and email thumbnail; `''` when
+`next_pick_{1..3}_{name,url,image_url}` — name, parent storefront URL and email thumbnail (a configurable shows its best-selling in-stock variant); `''` when
 fewer than 3 qualify. Rule: pinned SKUs of the customer's `primary_medium`, then that medium's add-on
 categories ranked by units sold in the last 90 days, enabled + visible + stock ≥ 3 only, minus anything the
 customer has bought; filled from `any`. Admin: Customer Profile Fields › Next Picks.

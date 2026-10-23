@@ -82,6 +82,35 @@ class NextPicksTest extends TestCase
         $this->assertSame(['Gamvar', 'https://s/gamvar', ''], [$f['next_pick_2_name'], $f['next_pick_2_url'], $f['next_pick_2_image_url']]);
     }
 
+    public function testConfigurableIsShownAsItsBestSellingInStockVariant(): void
+    {
+        // 4631 = W&N Oil Colour Mediums: 4636 Liquin 75 ml sells most but is out of stock, 4644 disabled
+        $children = [4631 => [4636, 4639, 4643, 4644], 500 => [501, 502], 600 => [601]];
+        $enabled = array_flip([4636, 4639, 4643, 501, 502, 601]);
+        $inStock = array_flip([4639, 4643, 4644, 501, 502]);
+        $units = [4636 => 40.0, 4643 => 6.0, 4639 => 2.0, 4644 => 99.0];
+        $this->assertSame(
+            [4631 => 4643, 500 => 501], // 500: no sales, lowest id; 600: nothing sellable, no variant
+            NextPicks::variants([4631, 500, 600, 7], $children, $enabled, $inStock, $units)
+        );
+    }
+
+    public function testDisplayUsesVariantNameAndImageWithTheParentUrl(): void
+    {
+        $products = [
+            4631 => ['name' => 'W&N Oil Colour Mediums', 'url' => 'https://s/oil-mediums', 'image' => 'https://m/parent.jpg'],
+            4643 => ['name' => 'Liquin Fine Detail 500 ML', 'url' => 'https://s/catalog/product/view/id/4643', 'image' => 'https://m/liquin.jpg'],
+            500 => ['name' => 'Palette', 'url' => 'https://s/palette', 'image' => 'https://m/palette.jpg'],
+            501 => ['name' => 'Palette - Small', 'url' => null, 'image' => null],
+            7 => ['name' => 'Eraser', 'url' => 'https://s/eraser', 'image' => null],
+        ];
+        $d = NextPicks::display([4631, 500, 7], [4631 => 4643, 500 => 501], $products);
+        $this->assertSame(['name' => 'Liquin Fine Detail 500 ML', 'url' => 'https://s/oil-mediums', 'image' => 'https://m/liquin.jpg'], $d[4631]);
+        $this->assertSame(['name' => 'Palette - Small', 'url' => 'https://s/palette', 'image' => 'https://m/palette.jpg'], $d[500], 'variant without image → parent image');
+        $this->assertSame(['name' => 'Eraser', 'url' => 'https://s/eraser', 'image' => null], $d[7]);
+        $this->assertSame('Liquin Fine Detail 500 ML', NextPicks::fields([4631], $d)['next_pick_1_name']);
+    }
+
     public function testChildSalesRollUpToTheConfigurableParent(): void
     {
         // 101, 102 are variants of 100; 200 is a plain simple; 100 also sold as a parent line

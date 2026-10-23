@@ -5,6 +5,7 @@
  * Candidates per medium (admin "Add-on categories per medium", descendants included), rolled up to the
  * configurable parent: parent enabled + visible, and in stock with ≥ "Minimum stock" units (a
  * configurable: any enabled child). Ranked by units sold on non-canceled orders in the sales window.
+ * A configurable is shown as its best-selling in-stock variant (name + image), linked to the parent page.
  * Candidates are computed once per process; cron/CLI/outbox runs are short-lived, so they stay fresh.
  *
  * Never throws: on any failure it returns [] so the caller sends no pick fields at all, rather than
@@ -26,7 +27,7 @@ class NextPicksProvider
 {
     private const VISIBLE = [2, 3, 4]; // catalog, search, catalog+search
 
-    /** @var array{0:array<string,int[]>,1:array<string,int[]>}|null [ranked, pinned] */
+    /** @var array{0:array<string,int[]>,1:array<string,int[]>,2:array<int,int>}|null [ranked, pinned, variantOf] */
     private ?array $candidates = null;
     private ?int $storeId = null;
 
@@ -49,20 +50,22 @@ class NextPicksProvider
             return [];
         }
         try {
-            [$ranked, $pinned] = $this->candidates();
+            [$ranked, $pinned, $variantOf] = $this->candidates();
             $bought = $this->boughtParents(array_keys($mediumByEmail));
             $chosen = [];
             foreach ($mediumByEmail as $email => $medium) {
                 $chosen[$email] = NextPicks::choose($medium, $ranked, $pinned, $bought[$email] ?? []);
             }
-            $ids = array_values(array_unique(array_merge([], ...array_values($chosen))));
+            $parents = array_values(array_unique(array_merge([], ...array_values($chosen))));
+            $ids = array_values(array_unique(array_merge($parents, array_values(array_intersect_key($variantOf, array_flip($parents))))));
             $products = $ids ? $this->catalog->forProducts($ids, $this->storeId()) : [];
             if ($missing = array_diff($ids, array_keys($products))) {
                 throw new \RuntimeException('catalog lookup missing products ' . implode(',', $missing));
             }
+            $display = NextPicks::display($parents, $variantOf, $products);
             $out = [];
             foreach ($chosen as $email => $picked) {
-                $out[$email] = NextPicks::fields($picked, $products);
+                $out[$email] = NextPicks::fields($picked, $display);
             }
 
             return $out;
@@ -73,17 +76,23 @@ class NextPicksProvider
         }
     }
 
-    /** @return array{0:array<string,int[]>,1:array<string,int[]>} [medium => ranked parent ids, medium => pinned parent ids] */
+    /**
+     * @return array{0:array<string,int[]>,1:array<string,int[]>,2:array<int,int>}
+     *         [medium => ranked parent ids, medium => pinned parent ids, configurable id => variant shown]
+     */
     public function candidates(): array
     {
         if ($this->candidates !== null) {
             return $this->candidates;
         }
-        $units = $this->unitsSold($this->config->getPickSalesWindowDays());
+        [$units, $productUnits] = $this->unitsSold($this->config->getPickSalesWindowDays());
         $minStock = $this->config->getPickMinStock();
         $ranked = [];
+        $variantOf = [];
         foreach ($this->config->getPickCategoryMap() as $medium => $categoryIds) {
-            $ranked[$medium] = NextPicks::rank($this->eligibleParents($categoryIds, $minStock), $units);
+            [$eligible, $variants] = $this->eligibleParents($categoryIds, $minStock, $productUnits);
+            $ranked[$medium] = NextPicks::rank($eligible, $units);
+            $variantOf += $variants;
         }
         $pinned = [];
         $c = $this->conn();
@@ -96,31 +105,39 @@ class NextPicksProvider
             $pinned[$medium] = array_values(array_unique(array_map(static fn ($id) => $parentOf[$id] ?? $id, $ids)));
         }
 
-        return $this->candidates = [$ranked, $pinned];
+        return $this->candidates = [$ranked, $pinned, $variantOf];
     }
 
-    /** @return array<int,float> parent id => units sold in the last $days days on non-canceled orders */
+    /**
+     * Units sold in the last $days days on non-canceled orders.
+     * @return array{0:array<int,float>,1:array<int,float>} [parent id => units, product id => units (variants too)]
+     */
     private function unitsSold(int $days): array
     {
         $c = $this->conn();
-        $qty = $c->fetchPairs(
-            $c->select()
-                ->from(['soi' => $this->t('sales_order_item')], ['product_id', 'units' => new \Zend_Db_Expr('SUM(soi.qty_ordered)')])
-                ->join(['so' => $this->t('sales_order')], 'so.entity_id = soi.order_id', [])
-                ->where('so.state <> ?', 'canceled')
-                ->where('so.created_at >= ?', gmdate('Y-m-d H:i:s', time() - $days * 86400))
-                ->where('soi.parent_item_id IS NULL') // configurable lines are counted once, on the parent
-                ->group('soi.product_id')
-        );
+        $select = $c->select()
+            ->from(['soi' => $this->t('sales_order_item')], ['product_id', 'units' => new \Zend_Db_Expr('SUM(soi.qty_ordered)')])
+            ->join(['so' => $this->t('sales_order')], 'so.entity_id = soi.order_id', [])
+            ->where('so.state <> ?', 'canceled')
+            ->where('so.created_at >= ?', gmdate('Y-m-d H:i:s', time() - $days * 86400))
+            ->group('soi.product_id');
+        // Variant lines repeat their configurable line's qty: count only top-level lines for the parent.
+        $qty = $c->fetchPairs((clone $select)->where('soi.parent_item_id IS NULL'));
 
-        return NextPicks::rollUp($qty, $this->parentsOf(array_keys($qty)));
+        return [
+            NextPicks::rollUp($qty, $this->parentsOf(array_keys($qty))),
+            array_map('floatval', $c->fetchPairs($select)),
+        ];
     }
 
-    /** @return int[] eligible parent ids in these categories (and their descendants) */
-    private function eligibleParents(array $categoryIds, float $minStock): array
+    /**
+     * @param array<int,float> $productUnits product id => units sold (picks each configurable's variant)
+     * @return array{0:int[],1:array<int,int>} [eligible parent ids in these categories (and descendants), configurable id => variant]
+     */
+    private function eligibleParents(array $categoryIds, float $minStock, array $productUnits): array
     {
         if (!$categoryIds) {
-            return [];
+            return [[], []];
         }
         $c = $this->conn();
         $paths = $c->select()->from($this->t('catalog_category_entity'), ['entity_id']);
@@ -132,7 +149,7 @@ class NextPicksProvider
                 ->where('category_id IN (?)', array_map('intval', $c->fetchCol($paths)) ?: [0])
         ));
         if (!$productIds) {
-            return [];
+            return [[], []];
         }
         $parentOf = $this->parentsOf($productIds);
         $parents = array_values(array_unique(array_map(static fn ($id) => $parentOf[$id] ?? $id, $productIds)));
@@ -157,7 +174,9 @@ class NextPicksProvider
                 ->where('qty >= ?', $minStock)
         )));
 
-        return NextPicks::eligible($parents, $types, $children, $enabled, $visible, $inStock);
+        $eligible = NextPicks::eligible($parents, $types, $children, $enabled, $visible, $inStock);
+
+        return [$eligible, NextPicks::variants($eligible, $children, $enabled, $inStock, $productUnits)];
     }
 
     /**

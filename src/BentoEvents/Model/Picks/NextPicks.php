@@ -4,7 +4,8 @@
  *
  * Per customer: pinned picks of their primary_medium that are eligible, then that medium's eligible
  * products by recent units sold; anything they have bought is skipped; short lists are filled from
- * "any" the same way. Everything is parent level (a configurable child counts as its parent).
+ * "any" the same way. Ranking and exclusion are parent level (a configurable child counts as its parent);
+ * a configurable is then shown as its best-selling in-stock variant, e.g. "Liquin Original - 1 Litre".
  */
 
 declare(strict_types=1);
@@ -69,6 +70,56 @@ final class NextPicks
                     break;
                 }
             }
+        }
+
+        return $out;
+    }
+
+    /**
+     * The variant each configurable is shown as: its best-selling enabled, in-stock child (ties: lowest id).
+     *
+     * @param int[] $parents eligible parent ids
+     * @param array<int,int[]> $children configurable id => child ids
+     * @param array<int,mixed> $enabled $inStock id-keyed sets
+     * @param array<int,float> $units product id => units sold in the window
+     * @return array<int,int> configurable id => variant id
+     */
+    public static function variants(array $parents, array $children, array $enabled, array $inStock, array $units): array
+    {
+        $out = [];
+        foreach ($parents as $id) {
+            $sellable = array_values(array_filter(
+                $children[$id] ?? [],
+                static fn (int $c) => isset($enabled[$c], $inStock[$c])
+            ));
+            if ($sellable) {
+                $out[$id] = self::rank($sellable, $units)[0];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * What each pick shows: a configurable's variant name and image (the parent's image if the variant has none),
+     * always the parent's URL (variants are not visible on their own).
+     *
+     * @param int[] $parents
+     * @param array<int,int> $variantOf configurable id => variant id
+     * @param array<int,array{name:?string,url:?string,image:?string}> $products CatalogLookup rows for parents and variants
+     * @return array<int,array{name:?string,url:?string,image:?string}> parent id => row
+     */
+    public static function display(array $parents, array $variantOf, array $products): array
+    {
+        $out = [];
+        foreach ($parents as $id) {
+            $parent = $products[$id] ?? [];
+            $variant = $products[$variantOf[$id] ?? 0] ?? [];
+            $out[$id] = [
+                'name' => $variant['name'] ?? $parent['name'] ?? null,
+                'url' => $parent['url'] ?? null,
+                'image' => $variant['image'] ?? $parent['image'] ?? null,
+            ];
         }
 
         return $out;
