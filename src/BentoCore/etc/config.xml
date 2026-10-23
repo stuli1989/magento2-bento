@@ -110,6 +110,25 @@
 136=printmaking
 # Crafts
 88=mixed]]></category_medium_map>
+                <!-- medium=category ids (descendants included). Resolved from the live category tree 2026-10-23.
+                     Customers whose primary_medium has no line (gouache, mixed, markers…) get "any". -->
+                <pick_category_map><![CDATA[# Mediums & Solvents, Oil Varnish
+oil=158,159
+# Acrylic Mediums (gels included), Synthetic Acrylic Brushes, Canvas Boards & Pads
+acrylic=153,451,215
+# Masking Fluid & Tape, Watercolour Palettes, Watercolour Mediums (no granulation-colour category exists)
+watercolour=169,480,165
+# Erasers & Sharpeners, Pencil Holders & Accessories (paper stumps), Graphite & Charcoal Tools (stumps), Pencil Sharpeners, Fixative
+drawing=114,247,287,248,288
+# Pastel Pencils, Pastel Paper, Pastel Paper Boards, Fixative
+pastel=293,298,231,288
+# Dip Pens & Holders (both trees), Calligraphy Ink, Calligraphy Inks & Ink Sets
+ink=310,570,301,577
+# Masking Fluid & Tape (both trees), Erasers & Sharpeners, Journals, Sketchbooks & Notebooks
+any=169,350,114,228]]></pick_category_map>
+                <pick_pinned><![CDATA[# medium=SKU,SKU,SKU (up to 3, optional)]]></pick_pinned>
+                <pick_sales_window_days>90</pick_sales_window_days>
+                <pick_min_stock>3</pick_min_stock>
             </profile>
             <advanced>
                 <timeout>10</timeout>

@@ -60,4 +60,12 @@ interface ConfigInterface
     // Profile
     /** @return array<int,string> category id => medium slug */
     public function getCategoryMediumMap(): array;
+
+    // Next picks
+    /** @return array<string,int[]> medium slug (or "any") => add-on category ids */
+    public function getPickCategoryMap(): array;
+    /** @return array<string,string[]> medium slug (or "any") => up to 3 pinned SKUs */
+    public function getPinnedPicks(): array;
+    public function getPickSalesWindowDays(): int;
+    public function getPickMinStock(): float;
 }

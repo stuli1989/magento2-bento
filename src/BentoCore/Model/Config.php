@@ -226,6 +226,50 @@ class Config implements ConfigInterface
         return $map;
     }
 
+    // ---------- Next picks ----------
+
+    public function getPickCategoryMap(): array
+    {
+        return array_map(
+            static fn (array $ids) => array_values(array_unique(array_filter(array_map('intval', $ids)))),
+            $this->mediumLists('profile/pick_category_map')
+        );
+    }
+
+    public function getPinnedPicks(): array
+    {
+        return array_map(static fn (array $skus) => array_slice($skus, 0, 3), $this->mediumLists('profile/pick_pinned'));
+    }
+
+    public function getPickSalesWindowDays(): int
+    {
+        return max(1, (int)($this->value('profile/pick_sales_window_days') ?: 90));
+    }
+
+    public function getPickMinStock(): float
+    {
+        $v = $this->value('profile/pick_min_stock');
+        return $v === null ? 3.0 : max(0.0, (float)$v);
+    }
+
+    /** "medium=a, b, c" lines (# comments) → medium => [a, b, c]. A repeated medium appends. */
+    private function mediumLists(string $path): array
+    {
+        $out = [];
+        foreach (preg_split('/\r\n|\r|\n/', (string)$this->value($path)) ?: [] as $line) {
+            $line = trim($line);
+            if ($line === '' || $line[0] === '#'
+                || preg_match('/^([A-Za-z_][A-Za-z0-9_\-]*)\s*=\s*(.*)$/', $line, $m) !== 1) {
+                continue;
+            }
+            $items = array_values(array_filter(array_map('trim', explode(',', $m[2])), 'strlen'));
+            $medium = strtolower($m[1]);
+            $out[$medium] = array_merge($out[$medium] ?? [], $items);
+        }
+
+        return $out;
+    }
+
     // ---------- helpers ----------
 
     private function value(string $path, ?int $storeId = null): ?string

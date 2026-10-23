@@ -85,6 +85,32 @@ class ConfigTest extends TestCase
         );
     }
 
+    public function testPickCategoryMapParsing(): void
+    {
+        $this->values['artlounge_bento/profile/pick_category_map'] =
+            "# Oil\noil=158, 159\n Any = 169,abc,0,169\nbad line\n1=ink\noil=160";
+        $this->assertSame(
+            ['oil' => [158, 159, 160], 'any' => [169]],
+            $this->config->getPickCategoryMap()
+        );
+    }
+
+    public function testPinnedPicksKeepSkuCaseAndCapAtThree(): void
+    {
+        $this->values['artlounge_bento/profile/pick_pinned'] = "# none yet\noil=WN-Liquin, gam-1,A,B\nink=";
+        $this->assertSame(['oil' => ['WN-Liquin', 'gam-1', 'A'], 'ink' => []], $this->config->getPinnedPicks());
+    }
+
+    public function testPickNumbersDefault(): void
+    {
+        $this->assertSame(90, $this->config->getPickSalesWindowDays());
+        $this->assertSame(3.0, $this->config->getPickMinStock());
+        $this->values['artlounge_bento/profile/pick_sales_window_days'] = '30';
+        $this->values['artlounge_bento/profile/pick_min_stock'] = '0';
+        $this->assertSame(30, $this->config->getPickSalesWindowDays());
+        $this->assertSame(0.0, $this->config->getPickMinStock());
+    }
+
     public function testCouponEnabledRequiresMasterSwitch(): void
     {
         $this->values['artlounge_bento/abandoned_cart/coupon_enabled'] = '1';

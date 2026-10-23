@@ -157,6 +157,25 @@ class ProfileLoader
         );
     }
 
+    /**
+     * Emails with ≥1 counted order created at/after $since (UTC 'Y-m-d H:i:s'), ordered.
+     * @return string[]
+     */
+    public function buyerEmailsSince(string $since): array
+    {
+        $c = $this->conn();
+
+        return $c->fetchCol(
+            $c->select()
+                ->from($this->t('sales_order'), ['email' => new \Zend_Db_Expr('LOWER(customer_email)')])
+                ->where('state IN (?)', StatsCalculator::COUNTED_STATES)
+                ->where('customer_email IS NOT NULL AND customer_email <> ""')
+                ->where('created_at >= ?', $since)
+                ->group(new \Zend_Db_Expr('LOWER(customer_email)'))
+                ->order('email ASC')
+        );
+    }
+
     /** @return array<string, array{first_name:?string, last_name:?string, phone:?string}> latest order's names/phone */
     public function contactDetails(array $emails): array
     {

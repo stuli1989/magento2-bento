@@ -84,6 +84,8 @@
     <type name="ArtLounge\BentoEvents\Observer\SubscriberSaveCommitAfter"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
     <type name="ArtLounge\BentoEvents\Observer\CustomerRegisterSuccess"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
     <type name="ArtLounge\BentoEvents\Observer\ReviewSaveCommitAfter"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Model\Picks\NextPicksProvider"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
+    <type name="ArtLounge\BentoEvents\Cron\RefreshNextPicks"><arguments><argument name="logger" xsi:type="object">ArtLoungeBentoLogger</argument></arguments></type>
 
     <!-- CLI -->
     <type name="Magento\Framework\Console\CommandListInterface">
@@ -94,12 +96,19 @@
                 <item name="bento_outbox_run" xsi:type="object">ArtLounge\BentoEvents\Console\Command\OutboxRunCommand</item>
                 <item name="bento_outbox_preview" xsi:type="object">ArtLounge\BentoEvents\Console\Command\OutboxPreviewCommand</item>
                 <item name="bento_backfill" xsi:type="object">ArtLounge\BentoEvents\Console\Command\BackfillCommand</item>
+                <item name="bento_next_picks" xsi:type="object">ArtLounge\BentoEvents\Console\Command\NextPicksCommand</item>
             </argument>
         </arguments>
     </type>
     <!-- CLI commands are constructed for every bin/magento call: keep them cheap -->
     <type name="ArtLounge\BentoEvents\Console\Command\BackfillCommand">
         <arguments><argument name="backfill" xsi:type="object">ArtLounge\BentoEvents\Model\Profile\Backfill\Proxy</argument></arguments>
+    </type>
+    <type name="ArtLounge\BentoEvents\Console\Command\NextPicksCommand">
+        <arguments>
+            <argument name="refresh" xsi:type="object">ArtLounge\BentoEvents\Model\Picks\Refresh\Proxy</argument>
+            <argument name="picks" xsi:type="object">ArtLounge\BentoEvents\Model\Picks\NextPicksProvider\Proxy</argument>
+        </arguments>
     </type>
     <type name="ArtLounge\BentoEvents\Console\Command\OutboxRunCommand">
         <arguments><argument name="sender" xsi:type="object">ArtLounge\BentoEvents\Model\Outbox\Sender\Proxy</argument></arguments>

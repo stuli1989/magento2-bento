@@ -142,6 +142,23 @@
                     <label>Category → Medium Map</label>
                     <comment><![CDATA[One <code>category_id=medium</code> per line (# for comments). The deepest mapped category of each purchased product decides its medium; primary_medium = highest spend share. Unmapped categories are ignored.]]></comment>
                 </field>
+                <field id="pick_category_map" translate="label comment" type="textarea" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Next Picks: Add-on Categories per Medium</label>
+                    <comment><![CDATA[One <code>medium=category_id,category_id,…</code> per line (# for comments); subcategories are included. Mediums are the slugs above plus <code>any</code>, which fills the list when a customer's medium has no line or too few picks. Picks (next_pick_1..3_name/url/image_url) = enabled, visible, in-stock products here, ranked by recent units sold, minus anything the customer has bought.]]></comment>
+                </field>
+                <field id="pick_pinned" translate="label comment" type="textarea" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Next Picks: Pinned Picks per Medium</label>
+                    <comment><![CDATA[Optional. One <code>medium=SKU,SKU,SKU</code> per line (up to 3). A pin goes first only if it is in that medium's add-on categories, in stock and not already bought.]]></comment>
+                </field>
+                <field id="pick_sales_window_days" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Next Picks: Recent-sales Window (days)</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                </field>
+                <field id="pick_min_stock" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Next Picks: Minimum Stock to Recommend</label>
+                    <comment>Units on hand (a configurable product: any one variant).</comment>
+                    <validate>validate-number validate-zero-or-greater</validate>
+                </field>
             </group>
 
             <group id="advanced" translate="label" sortOrder="90" showInDefault="1" showInWebsite="0" showInStore="0">

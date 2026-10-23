@@ -1,7 +1,8 @@
 <?php
 /**
  * Profile fields for /batch/subscribers, computed from full order history.
- * Sent with $purchase, $OrderCanceled, $OrderRefunded, $account_created and by bento:backfill.
+ * Sent with $purchase, $OrderCanceled, $OrderRefunded, $account_created, by bento:backfill and by the
+ * nightly next-picks refresh. Includes next_pick_* (NextPicksProvider) unless the picks fail to compute.
  */
 
 declare(strict_types=1);
@@ -10,13 +11,15 @@ namespace ArtLounge\BentoEvents\Model\Profile;
 
 use ArtLounge\BentoCore\Api\ConfigInterface;
 use ArtLounge\BentoEvents\Model\Payload\Phone;
+use ArtLounge\BentoEvents\Model\Picks\NextPicksProvider;
 
 class ProfileFieldsProvider
 {
     public function __construct(
         private readonly ProfileLoader $loader,
         private readonly StatsCalculator $calculator,
-        private readonly ConfigInterface $config
+        private readonly ConfigInterface $config,
+        private readonly NextPicksProvider $picks
     ) {
     }
 
@@ -62,6 +65,10 @@ class ProfileFieldsProvider
                 + $stats;
             // Never send nulls (they would blank existing Bento values).
             $out[$email] = array_filter($record, static fn ($v) => $v !== null);
+        }
+        // Pick fields keep '' on purpose: an empty slot must clear an older pick.
+        foreach ($this->picks->fieldsFor(array_map(static fn ($r) => $r['primary_medium'] ?? null, $out)) as $email => $fields) {
+            $out[$email] += $fields;
         }
 
         return $out;

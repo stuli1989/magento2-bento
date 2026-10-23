@@ -14,6 +14,10 @@
         <job name="artlounge_bento_reconcile" instance="ArtLounge\BentoEvents\Cron\Reconcile" method="execute">
             <schedule>15 3 * * *</schedule>
         </job>
+        <!-- next_pick_* for every buyer of the last 30 days, so picks follow stock (03:45 server time) -->
+        <job name="artlounge_bento_next_picks" instance="ArtLounge\BentoEvents\Cron\RefreshNextPicks" method="execute">
+            <schedule>45 3 * * *</schedule>
+        </job>
         <!-- Expired / old used recovery coupons -->
         <job name="artlounge_bento_coupon_cleanup" instance="ArtLounge\BentoEvents\Cron\CouponCleanup" method="execute">
             <schedule>0 4 * * *</schedule>
