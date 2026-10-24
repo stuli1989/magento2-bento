@@ -1,6 +1,7 @@
 <?php
 /**
- * artlounge_bento_next_picks — nightly: refresh next_pick_* for every buyer of the last 30 days.
+ * artlounge_bento_next_picks — nightly: refresh next_pick_* / new_in_* / usual_* for every buyer of the
+ * last 30 days plus every VIP.
  */
 
 declare(strict_types=1);
@@ -28,11 +29,11 @@ class RefreshNextPicks
             return;
         }
         try {
-            $report = $this->refresh->run(self::DAYS);
+            $report = $this->refresh->run(null, true, true, self::DAYS);
             unset($report['sample']); // holds customer emails
-            $this->logger->info('Bento next picks refreshed', $report);
+            $this->logger->info('Bento product lists refreshed', $report);
         } catch (\Throwable $e) {
-            $this->logger->error('Bento next picks refresh failed', ['error' => $e->getMessage()]);
+            $this->logger->error('Bento product lists refresh failed', ['error' => $e->getMessage()]);
         }
     }
 }

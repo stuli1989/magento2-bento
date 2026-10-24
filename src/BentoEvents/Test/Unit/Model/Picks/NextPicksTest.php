@@ -111,6 +111,115 @@ class NextPicksTest extends TestCase
         $this->assertSame('Liquin Fine Detail 500 ML', NextPicks::fields([4631], $d)['next_pick_1_name']);
     }
 
+    // ---------- new_in_* ----------
+
+    public function testNewArrivalWindowCountsOnlyParentsThatAreNewThemselves(): void
+    {
+        $createdAt = [
+            1 => '2026-09-01 00:00:00',  // new simple
+            2 => '2026-01-01 00:00:00',  // old simple
+            30 => '2025-05-01 00:00:00', // old configurable …
+            31 => '2026-10-01 00:00:00', // … with a new variant: not a new arrival
+            40 => '2026-08-01 00:00:00', // new configurable
+            41 => '2026-08-01 00:00:00',
+            5 => '2026-06-25 00:00:00',  // exactly on the window start
+        ];
+        $parents = NextPicks::newArrivals($createdAt, [31 => 30, 41 => 40], '2026-06-25 00:00:00');
+        sort($parents);
+        $this->assertSame([1, 5, 40], $parents);
+    }
+
+    public function testNewArrivalsAreNewestFirst(): void
+    {
+        $this->assertSame([3, 9, 7, 1], NextPicks::newestFirst(
+            [1, 7, 3, 9],
+            [1 => '2026-07-01 00:00:00', 7 => '2026-09-01 00:00:00', 3 => '2026-10-20 00:00:00', 9 => '2026-09-01 00:00:00']
+        ), 'tie on created_at: higher id first');
+    }
+
+    public function testNewInSkipsBoughtAndCurrentPicksAndDoesNotFillFromAny(): void
+    {
+        $newest = ['oil' => [50, 51, 52, 53], 'any' => [60, 50, 51]];
+        $picks = [52];
+        $this->assertSame([51, 53], NextPicks::choose('oil', $newest, [], array_merge([50], $picks), false));
+    }
+
+    public function testNewInNeverRepeatsTheCustomersCurrentNextPicks(): void
+    {
+        // 11 is both a top seller (pick) and new; 12 is new; 13 bought
+        [$picks, $newIn] = NextPicks::picksAndNewIn('oil', [13], ['oil' => [11, 14, 15]], [], ['oil' => [11, 13, 12, 16]]);
+        $this->assertSame([11, 14, 15], $picks);
+        $this->assertSame([12, 16], $newIn);
+    }
+
+    public function testNewInWithBlankMediumUsesNewestAcrossAllMediums(): void
+    {
+        $newest = ['oil' => [50], 'any' => [60, 50, 51, 52]];
+        $this->assertSame([60, 50, 51], NextPicks::choose(null, $newest, [], [], false));
+        $this->assertSame([], NextPicks::choose('pastel', $newest, [], [], false), 'mapped medium with no arrivals stays blank');
+    }
+
+    // ---------- usual_* ----------
+
+    private function line(int $order, string $at, int $parent, ?int $product = null): array
+    {
+        return ['order_id' => $order, 'created_at' => $at, 'parent_id' => $parent, 'product_id' => $product ?? $parent];
+    }
+
+    public function testUsualsCountOrdersNotUnitsAndNeedTwoOrders(): void
+    {
+        $lines = [
+            // 10: one bulk order (lines repeat in one order) — not a habit
+            $this->line(1, '2026-01-01', 10), $this->line(1, '2026-01-01', 10), $this->line(1, '2026-01-01', 10),
+            // 20: 3 orders; 30: 2 orders, latest purchase most recent; 40: 2 orders, older
+            $this->line(2, '2026-02-01', 20), $this->line(3, '2026-03-01', 20), $this->line(4, '2026-04-01', 20),
+            $this->line(5, '2026-05-01', 40), $this->line(6, '2026-06-01', 40),
+            $this->line(7, '2026-07-01', 30), $this->line(8, '2026-09-01', 30),
+            $this->line(9, '2026-09-02', 50), $this->line(10, '2026-09-03', 50),
+        ];
+        $eligible = array_flip([10, 20, 30, 40, 50]);
+        $this->assertSame([20 => 20, 50 => 50, 30 => 30], NextPicks::usuals($lines, $eligible, [], []),
+            'orders desc, then most recent purchase; 40 is 4th');
+        // a 5-unit bulk line in one order still isn't a usual, even when the list is short
+        $this->assertSame([20 => 20], NextPicks::usuals(
+            [$this->line(1, '2026-01-01', 10), $this->line(2, '2026-02-01', 20), $this->line(3, '2026-03-01', 20)],
+            $eligible, [], []
+        ));
+    }
+
+    public function testOutOfStockUsualIsDropped(): void
+    {
+        $lines = [$this->line(1, '2026-01-01', 20), $this->line(2, '2026-02-01', 20), $this->line(3, '2026-03-01', 30), $this->line(4, '2026-04-01', 30)];
+        $this->assertSame([30 => 30], NextPicks::usuals($lines, array_flip([30]), [], []));
+    }
+
+    public function testUsualConfigurableShowsTheCustomersFavouriteVariantWhenSellable(): void
+    {
+        // parent 4631 bought in 3 orders: variant 4643 twice, 4639 once (configurable line + its variant line per order)
+        $lines = [];
+        foreach ([[1, 4643], [2, 4643], [3, 4639]] as [$order, $variant]) {
+            $lines[] = $this->line($order, "2026-0$order-01", 4631);
+            $lines[] = $this->line($order, "2026-0$order-01", 4631, $variant);
+        }
+        $eligible = array_flip([4631]);
+        $this->assertSame([4631 => 4643], NextPicks::usuals($lines, $eligible, [4643 => true, 4639 => true], [4631 => 4639]));
+        // favourite out of stock → best-selling sellable variant
+        $this->assertSame([4631 => 4644], NextPicks::usuals($lines, $eligible, [4639 => true, 4644 => true], [4631 => 4644]));
+    }
+
+    public function testListFieldNamesAreExact(): void
+    {
+        foreach (['new_in_', 'usual_'] as $prefix) {
+            $f = NextPicks::fields([1], [1 => ['name' => 'A', 'url' => 'u', 'image' => 'i']], $prefix);
+            $this->assertSame([
+                "{$prefix}1_name", "{$prefix}1_url", "{$prefix}1_image_url",
+                "{$prefix}2_name", "{$prefix}2_url", "{$prefix}2_image_url",
+                "{$prefix}3_name", "{$prefix}3_url", "{$prefix}3_image_url",
+            ], array_keys($f));
+            $this->assertSame(['A', '', ''], [$f["{$prefix}1_name"], $f["{$prefix}2_name"], $f["{$prefix}3_name"]], 'blanks when fewer than 3');
+        }
+    }
+
     public function testChildSalesRollUpToTheConfigurableParent(): void
     {
         // 101, 102 are variants of 100; 200 is a plain simple; 100 also sold as a parent line

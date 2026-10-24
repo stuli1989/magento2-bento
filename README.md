@@ -50,11 +50,20 @@ Profile fields pushed with purchase/cancel/refund/account events and by `bento:b
 `order_count, lifetime_spend, aov, first_order_date, last_purchase_date, last_order_number,
 customer_since, is_registered, top_categories, primary_medium, first_name, last_name, phone`.
 
-Next picks (same pushes, plus a nightly refresh at 03:45 of every buyer from the last 30 days):
+Product lists (same pushes, plus a nightly refresh at 03:45 of every buyer from the last 30 days and every
+VIP — lifetime spend ≥ ₹15,000 or ≥ 5 orders, both admin-configurable):
 `next_pick_{1..3}_{name,url,image_url}` — name, parent storefront URL and email thumbnail (a configurable shows its best-selling in-stock variant); `''` when
 fewer than 3 qualify. Rule: pinned SKUs of the customer's `primary_medium`, then that medium's add-on
 categories ranked by units sold in the last 90 days, enabled + visible + stock ≥ 3 only, minus anything the
 customer has bought; filled from `any`. Admin: Customer Profile Fields › Next Picks.
+
+`new_in_{1..3}_*` — products created in the last 120 days whose medium (Category → Medium Map, deepest
+category wins) is the customer's, newest first, same stock filter, minus anything bought or already a
+`next_pick_*`; no fill (a blank medium gets the newest across all mediums).
+
+`usual_{1..3}_*` — the customer's own products bought in ≥ 2 separate non-canceled orders, most orders
+first then most recent; same stock filter; a configurable shows the variant they ordered most if it is in
+stock, else the best-selling in-stock one; URL = the parent page.
 ## Operating it
 
 ```bash
@@ -63,8 +72,8 @@ bin/magento bento:outbox:preview --id=123       # exact JSON a row would send (n
 bin/magento bento:outbox:run                    # one send pass now
 bin/magento bento:outbox:replay --parked        # or --id=123 (repeatable)
 bin/magento bento:backfill --dry-run [--email-pattern='*+bentotest*@*'] [--resume]
-bin/magento bento:next-picks --medium=oil              # picks a no-history oil customer would get (no send)
-bin/magento bento:next-picks [--email=a@b.com] [--days=30] [--dry-run]
+bin/magento bento:next-picks --medium=oil              # lists a no-history oil customer would get (no send)
+bin/magento bento:next-picks [--email=a@b.com | --recent [--days=30] | --vips] [--dry-run]   # no flag = recent + VIPs
 ```
 
 **Test mode:** Stores › Configuration › ArtLounge › Bento Integration › General › *Test Mode: Email

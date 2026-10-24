@@ -252,6 +252,21 @@ class Config implements ConfigInterface
         return $v === null ? 3.0 : max(0.0, (float)$v);
     }
 
+    public function getNewArrivalsWindowDays(): int
+    {
+        return max(1, (int)($this->value('profile/new_arrivals_window_days') ?: 120));
+    }
+
+    public function getVipLifetimeSpend(): float
+    {
+        return max(1.0, (float)($this->value('profile/vip_lifetime_spend') ?: 15000));
+    }
+
+    public function getVipOrderCount(): int
+    {
+        return max(1, (int)($this->value('profile/vip_order_count') ?: 5));
+    }
+
     /** "medium=a, b, c" lines (# comments) → medium => [a, b, c]. A repeated medium appends. */
     private function mediumLists(string $path): array
     {

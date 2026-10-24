@@ -129,6 +129,9 @@ any=169,350,114,228]]></pick_category_map>
                 <pick_pinned><![CDATA[# medium=SKU,SKU,SKU (up to 3, optional)]]></pick_pinned>
                 <pick_sales_window_days>90</pick_sales_window_days>
                 <pick_min_stock>3</pick_min_stock>
+                <new_arrivals_window_days>120</new_arrivals_window_days>
+                <vip_lifetime_spend>15000</vip_lifetime_spend>
+                <vip_order_count>5</vip_order_count>
             </profile>
             <advanced>
                 <timeout>10</timeout>

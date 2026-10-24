@@ -156,8 +156,22 @@
                 </field>
                 <field id="pick_min_stock" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Next Picks: Minimum Stock to Recommend</label>
-                    <comment>Units on hand (a configurable product: any one variant).</comment>
+                    <comment>Units on hand (a configurable product: any one variant). Also applies to new arrivals and usuals.</comment>
                     <validate>validate-number validate-zero-or-greater</validate>
+                </field>
+                <field id="new_arrivals_window_days" translate="label comment" type="text" sortOrder="60" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>New-arrivals Window (days)</label>
+                    <comment><![CDATA[new_in_1..3_*: products created in this many days, in the customer's medium (Category → Medium Map, subcategories included), newest first, minus anything bought or already a next pick.]]></comment>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                </field>
+                <field id="vip_lifetime_spend" translate="label comment" type="text" sortOrder="70" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>VIP Lifetime Spend Threshold (₹)</label>
+                    <comment>VIPs (this spend OR the order count below) are refreshed nightly with the last 30 days' buyers.</comment>
+                    <validate>validate-number validate-greater-than-zero</validate>
+                </field>
+                <field id="vip_order_count" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>VIP Order-count Threshold</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
                 </field>
             </group>
 

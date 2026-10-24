@@ -2,7 +2,7 @@
 /**
  * Profile fields for /batch/subscribers, computed from full order history.
  * Sent with $purchase, $OrderCanceled, $OrderRefunded, $account_created, by bento:backfill and by the
- * nightly next-picks refresh. Includes next_pick_* (NextPicksProvider) unless the picks fail to compute.
+ * nightly product-list refresh. Includes next_pick_*, new_in_*, usual_* (NextPicksProvider) unless they fail to compute.
  */
 
 declare(strict_types=1);
@@ -66,7 +66,7 @@ class ProfileFieldsProvider
             // Never send nulls (they would blank existing Bento values).
             $out[$email] = array_filter($record, static fn ($v) => $v !== null);
         }
-        // Pick fields keep '' on purpose: an empty slot must clear an older pick.
+        // List fields keep '' on purpose: an empty slot must clear an older entry.
         foreach ($this->picks->fieldsFor(array_map(static fn ($r) => $r['primary_medium'] ?? null, $out)) as $email => $fields) {
             $out[$email] += $fields;
         }

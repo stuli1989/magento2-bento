@@ -1,8 +1,10 @@
 <?php
 /**
- * Re-pushes profile fields (incl. next_pick_*) via /batch/subscribers so the picks follow stock and sales
- * without anyone editing the emails. Nightly cron: every buyer with a counted order in the last 30 days.
- * CLI (bento:next-picks): one email, or the recent buyers. Obeys the configured test-mode allow-list.
+ * Re-pushes profile fields (incl. next_pick_*, new_in_*, usual_*) via /batch/subscribers so the lists
+ * follow stock and sales without anyone editing the emails. Nightly cron: every buyer with a counted
+ * order in the last 30 days PLUS every VIP (lifetime_spend ≥ ₹15,000 OR order_count ≥ 5 by default, the
+ * StatsCalculator values), de-duplicated — VIPs often haven't ordered recently. CLI (bento:next-picks):
+ * one email, the recent buyers, the VIPs, or both. Obeys the configured test-mode allow-list.
  * A failed batch is logged and skipped; the next night retries it.
  */
 
@@ -14,6 +16,7 @@ use ArtLounge\BentoCore\Api\BentoClientInterface;
 use ArtLounge\BentoCore\Api\ConfigInterface;
 use ArtLounge\BentoEvents\Model\Profile\ProfileFieldsProvider;
 use ArtLounge\BentoEvents\Model\Profile\ProfileLoader;
+use ArtLounge\BentoEvents\Model\Profile\StatsCalculator;
 
 class Refresh
 {
@@ -22,24 +25,40 @@ class Refresh
     public function __construct(
         private readonly ProfileLoader $loader,
         private readonly ProfileFieldsProvider $provider,
+        private readonly StatsCalculator $calculator,
         private readonly BentoClientInterface $client,
         private readonly ConfigInterface $config
     ) {
     }
 
     /**
-     * @param string|null $email one customer instead of the recent buyers
+     * @param string|null $email one customer instead of an audience
+     * @param bool $recent buyers with a counted order in the last $days days
+     * @param bool $vips every VIP, however long ago they ordered
      * @param callable|null $progress fn(string $message)
-     * @return array{eligible:int, filtered_out:int, sent:int, batches:int, failed_batches:int, sample:array, error:?string}
+     * @return array{recent:int, vips:int, audience:int, eligible:int, filtered_out:int, sent:int, batches:int, failed_batches:int, sample:array, error:?string}
      */
-    public function run(int $days, ?string $email = null, bool $dryRun = false, int $batchSize = self::BATCH_SIZE, ?callable $progress = null): array
-    {
-        $emails = $email !== null && $email !== ''
-            ? [strtolower(trim($email))]
-            : $this->loader->buyerEmailsSince(gmdate('Y-m-d H:i:s', time() - max(1, $days) * 86400));
+    public function run(
+        ?string $email,
+        bool $recent,
+        bool $vips,
+        int $days,
+        bool $dryRun = false,
+        int $batchSize = self::BATCH_SIZE,
+        ?callable $progress = null
+    ): array {
+        $recentEmails = $vipEmails = [];
+        if ($email !== null && $email !== '') {
+            $emails = [strtolower(trim($email))];
+        } else {
+            $recentEmails = $recent ? $this->loader->buyerEmailsSince(gmdate('Y-m-d H:i:s', time() - max(1, $days) * 86400)) : [];
+            $vipEmails = $vips ? $this->vipEmails() : [];
+            $emails = array_values(array_unique(array_merge($recentEmails, $vipEmails)));
+        }
         $testMode = $this->config->getTestMode();
         $selected = array_values(array_filter($emails, static fn (string $e) => $testMode->allows($e)));
         $report = [
+            'recent' => count($recentEmails), 'vips' => count($vipEmails), 'audience' => count($emails),
             'eligible' => count($selected), 'filtered_out' => count($emails) - count($selected),
             'sent' => 0, 'batches' => 0, 'failed_batches' => 0, 'sample' => [], 'error' => null,
         ];
@@ -64,5 +83,29 @@ class Refresh
         }
 
         return $report;
+    }
+
+    /** @return string[] buyers whose StatsCalculator lifetime_spend or order_count reaches the VIP thresholds */
+    public function vipEmails(): array
+    {
+        $spend = $this->config->getVipLifetimeSpend();
+        $count = $this->config->getVipOrderCount();
+        $tree = $this->loader->categoryTree();
+        $noAccount = ['is_registered' => false, 'created_at' => null];
+        $out = [];
+        $cursor = '';
+        do {
+            $emails = $this->loader->buyerEmailsAfter($cursor, self::BATCH_SIZE);
+            $orders = $this->loader->orders($emails);
+            foreach ($emails as $email) {
+                $stats = $this->calculator->calculate($orders[$email] ?? [], [], $noAccount, $tree, []);
+                if ($stats['lifetime_spend'] >= $spend || $stats['order_count'] >= $count) {
+                    $out[] = $email;
+                }
+            }
+            $cursor = (string)end($emails);
+        } while (count($emails) === self::BATCH_SIZE);
+
+        return $out;
     }
 }

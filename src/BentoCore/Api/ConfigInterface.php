@@ -68,4 +68,9 @@ interface ConfigInterface
     public function getPinnedPicks(): array;
     public function getPickSalesWindowDays(): int;
     public function getPickMinStock(): float;
+    /** new_in_*: products created within this many days */
+    public function getNewArrivalsWindowDays(): int;
+    /** VIP (nightly refresh audience): lifetime_spend ≥ this (₹) OR order_count ≥ getVipOrderCount() */
+    public function getVipLifetimeSpend(): float;
+    public function getVipOrderCount(): int;
 }

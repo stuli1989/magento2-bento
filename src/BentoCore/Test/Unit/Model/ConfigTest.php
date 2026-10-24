@@ -111,6 +111,19 @@ class ConfigTest extends TestCase
         $this->assertSame(0.0, $this->config->getPickMinStock());
     }
 
+    public function testNewArrivalsAndVipSettingsDefault(): void
+    {
+        $this->assertSame(120, $this->config->getNewArrivalsWindowDays());
+        $this->assertSame(15000.0, $this->config->getVipLifetimeSpend());
+        $this->assertSame(5, $this->config->getVipOrderCount());
+        $this->values['artlounge_bento/profile/new_arrivals_window_days'] = '60';
+        $this->values['artlounge_bento/profile/vip_lifetime_spend'] = '25000';
+        $this->values['artlounge_bento/profile/vip_order_count'] = '8';
+        $this->assertSame(60, $this->config->getNewArrivalsWindowDays());
+        $this->assertSame(25000.0, $this->config->getVipLifetimeSpend());
+        $this->assertSame(8, $this->config->getVipOrderCount());
+    }
+
     public function testCouponEnabledRequiresMasterSwitch(): void
     {
         $this->values['artlounge_bento/abandoned_cart/coupon_enabled'] = '1';

@@ -27,10 +27,12 @@ class NextPicksCommand extends Command
     protected function configure(): void
     {
         $this->setName('bento:next-picks')
-            ->setDescription('Recompute next_pick_* (with the other profile fields) and push them to Bento')
+            ->setDescription('Recompute next_pick_* / new_in_* / usual_* (with the other profile fields) and push them to Bento')
             ->addOption('email', null, InputOption::VALUE_REQUIRED, 'Only this customer')
-            ->addOption('days', null, InputOption::VALUE_REQUIRED, 'Buyers with an order in the last N days', (string)RefreshNextPicks::DAYS)
-            ->addOption('medium', null, InputOption::VALUE_REQUIRED, 'Print the picks for a customer of this medium with no purchases; sends nothing')
+            ->addOption('recent', null, InputOption::VALUE_NONE, 'Buyers with an order in the last --days days')
+            ->addOption('vips', null, InputOption::VALUE_NONE, 'All VIPs (admin spend / order-count thresholds). Neither flag = both, like the cron')
+            ->addOption('days', null, InputOption::VALUE_REQUIRED, 'Window for --recent', (string)RefreshNextPicks::DAYS)
+            ->addOption('medium', null, InputOption::VALUE_REQUIRED, 'Print the lists for a customer of this medium with no purchases; sends nothing')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Count and print a sample; send nothing')
             ->addOption('batch-size', null, InputOption::VALUE_REQUIRED, 'Emails per /batch/subscribers call', (string)Refresh::BATCH_SIZE);
     }
@@ -50,16 +52,23 @@ class NextPicksCommand extends Command
         }
 
         $dry = (bool)$input->getOption('dry-run');
+        $recent = (bool)$input->getOption('recent');
+        $vips = (bool)$input->getOption('vips');
         $report = $this->refresh->run(
-            (int)$input->getOption('days'),
             $input->getOption('email'),
+            $recent || !$vips,
+            $vips || !$recent,
+            (int)$input->getOption('days'),
             $dry,
             (int)$input->getOption('batch-size'),
             static fn (string $m) => $output->writeln($m)
         );
         $output->writeln(sprintf(
-            '<info>%s</info> eligible=%d filtered_out=%d sent=%d batches=%d failed_batches=%d',
+            '<info>%s</info> recent=%d vips=%d audience=%d eligible=%d filtered_out=%d sent=%d batches=%d failed_batches=%d',
             $dry ? 'DRY RUN' : 'DONE',
+            $report['recent'],
+            $report['vips'],
+            $report['audience'],
             $report['eligible'],
             $report['filtered_out'],
             $report['sent'],
