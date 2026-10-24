@@ -4,6 +4,24 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.2.0] — 2026-10-24
+
+Two more product lists on the subscriber for SP-02 "Just in", RP-02 and the monthly VIP-02 ("Your usuals" + new arrivals), refreshed like next picks — and the nightly refresh now covers VIPs, who often haven't ordered in 30 days.
+
+### Added
+- **`new_in_{1..3}_{name,url,image_url}`**: products created in the *New-arrivals Window* (120 days) whose medium — by the existing Category → Medium Map, deepest mapped category wins, the same rule as `primary_medium` — is the customer's; newest first (`created_at`). A parent counts only when it is new itself (a new variant on an old product is not a new arrival). Same enabled / visible / minimum-stock filter and variant display as next picks. Anything bought and any current `next_pick_*` are skipped; a short list stays short (blank medium → newest across all mapped mediums).
+- **`usual_{1..3}_{name,url,image_url}`**: the customer's own products bought in ≥ 2 separate non-canceled orders (orders, not units, so one bulk order is not a habit), most orders first, then most recent purchase; parent level; only if currently enabled, visible and in stock. A configurable shows the variant the customer ordered most when it is sellable, otherwise the best-selling sellable variant; the URL is always the parent page.
+- Both are sent wherever `next_pick_*` is (every profile push, `bento:backfill`, the nightly cron, the CLI); unused slots are `''`; if the lists can't be computed none of the three lists' fields are sent.
+- **Nightly audience = recent buyers (30 days) + VIPs, de-duplicated.** VIP = StatsCalculator `lifetime_spend` ≥ *VIP Lifetime Spend Threshold* (₹15,000) OR `order_count` ≥ *VIP Order-count Threshold* (5). The cron log carries `recent`, `vips` and `audience` counts.
+- **CLI** `bento:next-picks`: `--recent`, `--vips` (neither = both, like the cron), `--email`, `--days`, `--dry-run`, `--medium`.
+- **Admin** (Customer Profile Fields): *New-arrivals Window (days)* 120, *VIP Lifetime Spend Threshold (₹)* 15000, *VIP Order-count Threshold* 5.
+
+### Changed
+- `Refresh::run()` takes the audience (`$email`, `$recent`, `$vips`, `$days`, …) instead of `($days, $email, …)`.
+- `NextPicksProvider` gained a `ProfileLoader` constructor argument: clear `generated/code` (or `setup:di:compile` on production).
+
+---
+
 ## [2.1.0] — 2026-10-23
 
 Next picks for PP-03 (and later the second-purchase, replenishment and win-back emails): up to three in-stock add-ons for the customer's medium, kept current by Magento because Bento can't query it at send time.
