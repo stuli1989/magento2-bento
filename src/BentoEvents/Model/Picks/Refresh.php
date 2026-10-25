@@ -2,7 +2,7 @@
 /**
  * Re-pushes profile fields (incl. next_pick_*, new_in_*, usual_*) via /batch/subscribers so the lists
  * follow stock and sales without anyone editing the emails. Nightly cron: every buyer with a counted
- * order in the last 30 days PLUS every VIP (lifetime_spend ≥ ₹15,000 OR order_count ≥ 5 by default, the
+ * order in the admin Refresh Window (130 days by default, past the day 91–112 win-back emails) PLUS every VIP (lifetime_spend ≥ ₹15,000 OR order_count ≥ 5 by default, the
  * StatsCalculator values), de-duplicated — VIPs often haven't ordered recently. CLI (bento:next-picks):
  * one email, the recent buyers, the VIPs, or both. Obeys the configured test-mode allow-list.
  * A failed batch is logged and skipped; the next night retries it.
@@ -33,7 +33,7 @@ class Refresh
 
     /**
      * @param string|null $email one customer instead of an audience
-     * @param bool $recent buyers with a counted order in the last $days days
+     * @param bool $recent buyers with a counted order in the last $days days (null = admin Refresh Window)
      * @param bool $vips every VIP, however long ago they ordered
      * @param callable|null $progress fn(string $message)
      * @return array{recent:int, vips:int, audience:int, eligible:int, filtered_out:int, sent:int, batches:int, failed_batches:int, sample:array, error:?string}
@@ -42,7 +42,7 @@ class Refresh
         ?string $email,
         bool $recent,
         bool $vips,
-        int $days,
+        ?int $days,
         bool $dryRun = false,
         int $batchSize = self::BATCH_SIZE,
         ?callable $progress = null
@@ -51,7 +51,8 @@ class Refresh
         if ($email !== null && $email !== '') {
             $emails = [strtolower(trim($email))];
         } else {
-            $recentEmails = $recent ? $this->loader->buyerEmailsSince(gmdate('Y-m-d H:i:s', time() - max(1, $days) * 86400)) : [];
+            $days = max(1, $days ?? $this->config->getRefreshWindowDays());
+            $recentEmails = $recent ? $this->loader->buyerEmailsSince(gmdate('Y-m-d H:i:s', time() - $days * 86400)) : [];
             $vipEmails = $vips ? $this->vipEmails() : [];
             $emails = array_values(array_unique(array_merge($recentEmails, $vipEmails)));
         }

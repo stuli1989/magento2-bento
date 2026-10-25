@@ -35,6 +35,7 @@ class RefreshTest extends TestCase
         $this->config->method('getTestMode')->willReturnCallback(fn () => $this->testMode);
         $this->config->method('getVipLifetimeSpend')->willReturn(15000.0);
         $this->config->method('getVipOrderCount')->willReturn(5);
+        $this->config->method('getRefreshWindowDays')->willReturn(130);
         $order = static fn (float $total, string $state = 'complete') => [
             'increment_id' => '1', 'state' => $state, 'created_at' => '2025-01-01 00:00:00',
             'grand_total' => $total, 'total_refunded' => 0.0, 'purchased_at' => null,
@@ -86,6 +87,13 @@ class RefreshTest extends TestCase
         $this->assertSame(['recent' => 5, 'vips' => 0, 'audience' => 5, 'sent' => 5, 'batches' => 3, 'failed_batches' => 0],
             array_intersect_key($report, array_flip(['recent', 'vips', 'audience', 'sent', 'batches', 'failed_batches'])));
         $this->assertEqualsWithDelta(time() - 30 * 86400, strtotime($this->since . ' UTC'), 5, 'window = last 30 days');
+    }
+
+    public function testWindowDefaultsToTheAdminRefreshWindow(): void
+    {
+        $this->refresh()->run(null, true, true, null);
+        $this->assertEqualsWithDelta(time() - 130 * 86400, strtotime($this->since . ' UTC'), 5,
+            'null days = Refresh Window (130), past the day 91–112 win-back emails');
     }
 
     public function testVipsAreSpendOrOrderCountFromStatsCalculator(): void
@@ -168,7 +176,7 @@ class RefreshTest extends TestCase
         $refresh = $this->createMock(Refresh::class);
         $logger = $this->createMock(LoggerInterface::class);
         $this->config->method('isConfigured')->willReturnOnConsecutiveCalls(false, true);
-        $refresh->expects($this->once())->method('run')->with(null, true, true, RefreshNextPicks::DAYS)
+        $refresh->expects($this->once())->method('run')->with(null, true, true, null) // null = admin Refresh Window
             ->willReturn(['recent' => 2, 'vips' => 1, 'sent' => 2, 'sample' => [['email' => 'a@x.com']]]);
         $logger->expects($this->once())->method('info')
             ->with('Bento product lists refreshed', ['recent' => 2, 'vips' => 1, 'sent' => 2]);

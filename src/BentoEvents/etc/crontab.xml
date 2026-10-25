@@ -14,7 +14,7 @@
         <job name="artlounge_bento_reconcile" instance="ArtLounge\BentoEvents\Cron\Reconcile" method="execute">
             <schedule>15 3 * * *</schedule>
         </job>
-        <!-- next_pick_* for every buyer of the last 30 days, so picks follow stock (03:45 server time) -->
+        <!-- next_pick_* / new_in_* / usual_* for buyers in the admin Refresh Window (130 days) + all VIPs, so the lists follow stock (03:45 server time) -->
         <job name="artlounge_bento_next_picks" instance="ArtLounge\BentoEvents\Cron\RefreshNextPicks" method="execute">
             <schedule>45 3 * * *</schedule>
         </job>

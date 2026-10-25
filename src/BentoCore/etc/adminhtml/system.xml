@@ -164,9 +164,14 @@
                     <comment><![CDATA[new_in_1..3_*: products created in this many days, in the customer's medium (Category → Medium Map, subcategories included), newest first, minus anything bought or already a next pick.]]></comment>
                     <validate>validate-digits validate-greater-than-zero</validate>
                 </field>
+                <field id="refresh_window_days" translate="label comment" type="text" sortOrder="65" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Refresh Window (days)</label>
+                    <comment><![CDATA[The nightly refresh (03:45) re-pushes next_pick_*, new_in_* and usual_* for buyers with an order in this many days, plus every VIP. Keep it beyond the last email that reads them (win-back runs at days 91–112).]]></comment>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                </field>
                 <field id="vip_lifetime_spend" translate="label comment" type="text" sortOrder="70" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>VIP Lifetime Spend Threshold (₹)</label>
-                    <comment>VIPs (this spend OR the order count below) are refreshed nightly with the last 30 days' buyers.</comment>
+                    <comment>VIPs (this spend OR the order count below) are refreshed nightly with the Refresh Window's buyers.</comment>
                     <validate>validate-number validate-greater-than-zero</validate>
                 </field>
                 <field id="vip_order_count" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="0" showInStore="0">

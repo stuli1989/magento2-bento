@@ -130,6 +130,7 @@ any=169,350,114,228]]></pick_category_map>
                 <pick_sales_window_days>90</pick_sales_window_days>
                 <pick_min_stock>3</pick_min_stock>
                 <new_arrivals_window_days>120</new_arrivals_window_days>
+                <refresh_window_days>130</refresh_window_days>
                 <vip_lifetime_spend>15000</vip_lifetime_spend>
                 <vip_order_count>5</vip_order_count>
             </profile>

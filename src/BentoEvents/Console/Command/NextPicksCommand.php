@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace ArtLounge\BentoEvents\Console\Command;
 
-use ArtLounge\BentoEvents\Cron\RefreshNextPicks;
 use ArtLounge\BentoEvents\Model\Picks\NextPicksProvider;
 use ArtLounge\BentoEvents\Model\Picks\Refresh;
 use Magento\Framework\App\Area;
@@ -31,7 +30,7 @@ class NextPicksCommand extends Command
             ->addOption('email', null, InputOption::VALUE_REQUIRED, 'Only this customer')
             ->addOption('recent', null, InputOption::VALUE_NONE, 'Buyers with an order in the last --days days')
             ->addOption('vips', null, InputOption::VALUE_NONE, 'All VIPs (admin spend / order-count thresholds). Neither flag = both, like the cron')
-            ->addOption('days', null, InputOption::VALUE_REQUIRED, 'Window for --recent', (string)RefreshNextPicks::DAYS)
+            ->addOption('days', null, InputOption::VALUE_REQUIRED, 'Window for --recent (default: admin Refresh Window, 130)')
             ->addOption('medium', null, InputOption::VALUE_REQUIRED, 'Print the lists for a customer of this medium with no purchases; sends nothing')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Count and print a sample; send nothing')
             ->addOption('batch-size', null, InputOption::VALUE_REQUIRED, 'Emails per /batch/subscribers call', (string)Refresh::BATCH_SIZE);
@@ -58,7 +57,7 @@ class NextPicksCommand extends Command
             $input->getOption('email'),
             $recent || !$vips,
             $vips || !$recent,
-            (int)$input->getOption('days'),
+            $input->getOption('days') !== null ? (int)$input->getOption('days') : null,
             $dry,
             (int)$input->getOption('batch-size'),
             static fn (string $m) => $output->writeln($m)

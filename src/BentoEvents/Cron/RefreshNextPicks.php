@@ -1,7 +1,7 @@
 <?php
 /**
- * artlounge_bento_next_picks — nightly: refresh next_pick_* / new_in_* / usual_* for every buyer of the
- * last 30 days plus every VIP.
+ * artlounge_bento_next_picks — nightly: refresh next_pick_* / new_in_* / usual_* for every buyer in the
+ * admin Refresh Window (130 days) plus every VIP.
  */
 
 declare(strict_types=1);
@@ -14,8 +14,6 @@ use Psr\Log\LoggerInterface;
 
 class RefreshNextPicks
 {
-    public const DAYS = 30;
-
     public function __construct(
         private readonly Refresh $refresh,
         private readonly ConfigInterface $config,
@@ -29,7 +27,7 @@ class RefreshNextPicks
             return;
         }
         try {
-            $report = $this->refresh->run(null, true, true, self::DAYS);
+            $report = $this->refresh->run(null, true, true, null);
             unset($report['sample']); // holds customer emails
             $this->logger->info('Bento product lists refreshed', $report);
         } catch (\Throwable $e) {

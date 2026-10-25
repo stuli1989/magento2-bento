@@ -70,6 +70,8 @@ interface ConfigInterface
     public function getPickMinStock(): float;
     /** new_in_*: products created within this many days */
     public function getNewArrivalsWindowDays(): int;
+    /** Nightly product-list refresh: buyers with a counted order in this many days (plus every VIP) */
+    public function getRefreshWindowDays(): int;
     /** VIP (nightly refresh audience): lifetime_spend ≥ this (₹) OR order_count ≥ getVipOrderCount() */
     public function getVipLifetimeSpend(): float;
     public function getVipOrderCount(): int;

@@ -257,6 +257,11 @@ class Config implements ConfigInterface
         return max(1, (int)($this->value('profile/new_arrivals_window_days') ?: 120));
     }
 
+    public function getRefreshWindowDays(): int
+    {
+        return max(1, (int)($this->value('profile/refresh_window_days') ?: 130));
+    }
+
     public function getVipLifetimeSpend(): float
     {
         return max(1.0, (float)($this->value('profile/vip_lifetime_spend') ?: 15000));
