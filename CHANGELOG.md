@@ -4,6 +4,13 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.2.1] — 2026-10-25
+
+### Changed
+- **`new_in_*` = new since you last shopped.** A product only counts as new for a customer if it was created after their latest non-canceled order, as well as inside the *New-arrivals Window* (120 days) — the later of the two cutoffs wins. WB-01 ("new arrivals since your last visit", day 91) no longer shows a lapsed customer products that were already on the site when they last ordered. Customers with no orders keep the whole window. Applies to every email reading `new_in_*` (SP-02, RP-02, WB-01, VIP-02), so their lists are shorter for recent buyers. No new admin settings.
+
+---
+
 ## [2.2.0] — 2026-10-24
 
 Two more product lists on the subscriber for SP-02 "Just in", RP-02 and the monthly VIP-02 ("Your usuals" + new arrivals), refreshed like next picks — and the nightly refresh now covers VIPs, who often haven't ordered in 30 days.
