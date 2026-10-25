@@ -58,8 +58,8 @@ fewer than 3 qualify. Rule: pinned SKUs of the customer's `primary_medium`, then
 categories ranked by units sold in the last 90 days, enabled + visible + stock ≥ 3 only, minus anything the
 customer has bought; filled from `any`. Admin: Customer Profile Fields › Next Picks.
 
-`new_in_{1..3}_*` — products created in the last 120 days whose medium (Category → Medium Map, deepest
-category wins) is the customer's, newest first, same stock filter, minus anything bought or already a
+`new_in_{1..3}_*` — products created in the last 120 days AND after the customer's last order ("new since
+you last shopped"), whose medium (Category → Medium Map, deepest category wins) is the customer's, newest first, same stock filter, minus anything bought or already a
 `next_pick_*`; no fill (a blank medium gets the newest across all mediums).
 
 `usual_{1..3}_*` — the customer's own products bought in ≥ 2 separate non-canceled orders, most orders

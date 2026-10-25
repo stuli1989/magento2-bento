@@ -152,6 +152,31 @@ class NextPicksTest extends TestCase
         $this->assertSame([12, 16], $newIn);
     }
 
+    public function testNewInOnlyShowsProductsAddedAfterTheLastOrder(): void
+    {
+        $newest = ['oil' => [53, 52, 51, 50], 'any' => [60, 53, 52, 51, 50]];
+        $createdAt = [53 => '2026-10-20 00:00:00', 52 => '2026-09-15 10:00:01', 51 => '2026-09-15 10:00:00', 50 => '2026-07-01 00:00:00', 60 => '2026-10-21 00:00:00'];
+        // last order 2026-09-15 10:00:00: 51 was added in the same second → already there when they shopped
+        [, $newIn] = NextPicks::picksAndNewIn('oil', [], [], [], $newest, '2026-09-15 10:00:00', $createdAt);
+        $this->assertSame([53, 52], $newIn);
+        [, $blank] = NextPicks::picksAndNewIn(null, [], [], [], $newest, '2026-10-01 00:00:00', $createdAt);
+        $this->assertSame([60, 53], $blank, 'blank medium: newest across all mediums, same cutoff');
+    }
+
+    public function testNewInWithoutOrdersUsesTheWholeWindow(): void
+    {
+        $newest = ['oil' => [53, 50]];
+        $createdAt = [53 => '2026-10-20 00:00:00', 50 => '2026-07-01 00:00:00'];
+        $this->assertSame([53, 50], NextPicks::picksAndNewIn('oil', [], [], [], $newest, null, $createdAt)[1]);
+        $this->assertSame([53, 50], NextPicks::picksAndNewIn('oil', [], [], [], $newest, '', $createdAt)[1]);
+    }
+
+    public function testLastOrderCutoffDoesNotAffectNextPicks(): void
+    {
+        [$picks] = NextPicks::picksAndNewIn('oil', [], ['oil' => [1, 2, 3]], [], [], '2026-10-24 00:00:00', []);
+        $this->assertSame([1, 2, 3], $picks);
+    }
+
     public function testNewInWithBlankMediumUsesNewestAcrossAllMediums(): void
     {
         $newest = ['oil' => [50], 'any' => [60, 50, 51, 52]];

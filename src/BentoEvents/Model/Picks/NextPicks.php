@@ -52,16 +52,33 @@ final class NextPicks
     }
 
     /**
-     * One customer's next picks, then their new arrivals: never bought, never one of those picks, no fill from "any".
+     * One customer's next picks, then their new arrivals: never bought, never one of those picks, no fill
+     * from "any", and only products added after the customer's last order ("new since you last shopped") —
+     * the window start still applies, so the effective cutoff is the later of the two.
      *
      * @param int[] $bought parent ids the customer has ever bought
      * @param array<string,int[]> $ranked $pinned next-pick candidates (see choose())
      * @param array<string,int[]> $newest medium (and "any") => new-arrival parent ids, newest first
+     * @param ?string $lastOrderAt the customer's latest non-canceled order created_at (null = never ordered)
+     * @param array<int,string> $createdAt new-arrival parent id => created_at (same clock as $lastOrderAt)
      * @return array{0:int[],1:int[]} [next pick ids, new-in ids]
      */
-    public static function picksAndNewIn(?string $medium, array $bought, array $ranked, array $pinned, array $newest): array
-    {
+    public static function picksAndNewIn(
+        ?string $medium,
+        array $bought,
+        array $ranked,
+        array $pinned,
+        array $newest,
+        ?string $lastOrderAt = null,
+        array $createdAt = []
+    ): array {
         $picks = self::choose($medium, $ranked, $pinned, $bought);
+        if ($lastOrderAt !== null && $lastOrderAt !== '') {
+            $newest = array_map(
+                static fn (array $ids) => array_values(array_filter($ids, static fn (int $id) => ($createdAt[$id] ?? '') > $lastOrderAt)),
+                $newest
+            );
+        }
 
         return [$picks, self::choose($medium, $newest, [], array_merge($bought, $picks), false)];
     }

@@ -3,8 +3,9 @@
  * Product-list subscriber fields for a batch of customers (NextPicks is the rule; this is the data):
  *  - next_pick_*: admin "Add-on categories per medium" (descendants included), ranked by units sold on
  *    non-canceled orders in the sales window, pins first.
- *  - new_in_*: products created in the new-arrivals window whose medium (Category → Medium Map, deepest
- *    mapped category wins, as for primary_medium) is the customer's; newest first; never a current next pick.
+ *  - new_in_*: products created in the new-arrivals window AND after the customer's last order, whose medium
+ *    (Category → Medium Map, deepest mapped category wins, as for primary_medium) is the customer's; newest
+ *    first; never a current next pick.
  *  - usual_*: what the customer has bought in ≥ 2 separate orders.
  * Everything is parent level (rolled up from configurable children); bought products are excluded from
  * picks and new arrivals. Only enabled + visible parents with ≥ "Minimum stock" units (a configurable:
@@ -31,7 +32,7 @@ class NextPicksProvider
 {
     private const VISIBLE = [2, 3, 4]; // catalog, search, catalog+search
 
-    /** @var array{0:array<string,int[]>,1:array<string,int[]>,2:array<int,int>,3:array<string,int[]>,4:array<int,float>}|null */
+    /** @var array{0:array<string,int[]>,1:array<string,int[]>,2:array<int,int>,3:array<string,int[]>,4:array<int,float>,5:array<int,string>}|null */
     private ?array $candidates = null;
     private ?int $storeId = null;
 
@@ -55,12 +56,15 @@ class NextPicksProvider
             return [];
         }
         try {
-            [$ranked, $pinned, $variantOf, $newest, $productUnits] = $this->candidates();
+            [$ranked, $pinned, $variantOf, $newest, $productUnits, $createdAt] = $this->candidates();
             $lines = $this->purchaseLines(array_keys($mediumByEmail));
             $picks = $newIn = $usualShow = [];
             foreach ($mediumByEmail as $email => $medium) {
                 $bought = array_values(array_unique(array_column($lines[$email] ?? [], 'parent_id')));
-                [$picks[$email], $newIn[$email]] = NextPicks::picksAndNewIn($medium, $bought, $ranked, $pinned, $newest);
+                $lastOrderAt = ($lines[$email] ?? []) ? max(array_column($lines[$email], 'created_at')) : null;
+                [$picks[$email], $newIn[$email]] = NextPicks::picksAndNewIn(
+                    $medium, $bought, $ranked, $pinned, $newest, $lastOrderAt, $createdAt
+                );
             }
             [$eligible, $bestVariant, $sellable] = $this->filter($this->repeatParents($lines), $productUnits);
             $eligible = array_flip($eligible);
@@ -96,9 +100,10 @@ class NextPicksProvider
     }
 
     /**
-     * @return array{0:array<string,int[]>,1:array<string,int[]>,2:array<int,int>,3:array<string,int[]>,4:array<int,float>}
+     * @return array{0:array<string,int[]>,1:array<string,int[]>,2:array<int,int>,3:array<string,int[]>,4:array<int,float>,5:array<int,string>}
      *         [medium => ranked pick parents, medium => pinned parents, configurable => variant shown,
-     *          medium (and "any") => new-arrival parents newest first, product id => units sold]
+     *          medium (and "any") => new-arrival parents newest first, product id => units sold,
+     *          new-arrival parent => created_at]
      */
     public function candidates(): array
     {
@@ -123,14 +128,15 @@ class NextPicksProvider
             $parentOf = $this->parentsOf($ids);
             $pinned[$medium] = array_values(array_unique(array_map(static fn ($id) => $parentOf[$id] ?? $id, $ids)));
         }
-        [$newest, $newVariants] = $this->newArrivals($productUnits);
+        [$newest, $newVariants, $createdAt] = $this->newArrivals($productUnits);
 
-        return $this->candidates = [$ranked, $pinned, $variantOf + $newVariants, $newest, $productUnits];
+        return $this->candidates = [$ranked, $pinned, $variantOf + $newVariants, $newest, $productUnits, $createdAt];
     }
 
     /**
      * Eligible parents created in the new-arrivals window, by medium; "any" = every mapped medium.
-     * @return array{0:array<string,int[]>,1:array<int,int>} [medium => newest-first parent ids, configurable => variant]
+     * @return array{0:array<string,int[]>,1:array<int,int>,2:array<int,string>}
+     *         [medium => newest-first parent ids, configurable => variant, eligible parent => created_at]
      */
     private function newArrivals(array $productUnits): array
     {
@@ -141,7 +147,7 @@ class NextPicksProvider
         $parents = NextPicks::newArrivals($createdAt, $this->parentsOf($recent), $since);
         [$eligible, $variants] = $this->filter($parents, $productUnits);
         if (!$eligible) {
-            return [[], []];
+            return [[], [], []];
         }
         $categoryIds = [];
         foreach ($c->fetchAll(
@@ -160,7 +166,11 @@ class NextPicksProvider
             }
         }
 
-        return [array_map(static fn (array $ids) => NextPicks::newestFirst($ids, $createdAt), $byMedium), $variants];
+        return [
+            array_map(static fn (array $ids) => NextPicks::newestFirst($ids, $createdAt), $byMedium),
+            $variants,
+            array_map('strval', array_intersect_key($createdAt, array_flip($eligible))),
+        ];
     }
 
     /**

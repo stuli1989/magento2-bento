@@ -161,7 +161,7 @@
                 </field>
                 <field id="new_arrivals_window_days" translate="label comment" type="text" sortOrder="60" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>New-arrivals Window (days)</label>
-                    <comment><![CDATA[new_in_1..3_*: products created in this many days, in the customer's medium (Category → Medium Map, subcategories included), newest first, minus anything bought or already a next pick.]]></comment>
+                    <comment><![CDATA[new_in_1..3_*: products created in this many days and after the customer's last order, in the customer's medium (Category → Medium Map, subcategories included), newest first, minus anything bought or already a next pick.]]></comment>
                     <validate>validate-digits validate-greater-than-zero</validate>
                 </field>
                 <field id="refresh_window_days" translate="label comment" type="text" sortOrder="65" showInDefault="1" showInWebsite="0" showInStore="0">
