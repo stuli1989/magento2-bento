@@ -42,7 +42,7 @@ unused slots `''`:
   both: `last_cart_coupon_eligible` (`yes`/`no`), `last_cart_coupon_code`, `last_cart_coupon_url`,
   `last_cart_coupon_expires`, `last_cart_coupon_value_display`; live pricing (`Model/Pricing/Ladder`):
   `last_cart_discount(_display)`, `last_cart_ships_free`, `last_cart_next_gap_display`, `last_cart_next_label`,
-  `last_cart_tier_pct`, plus `ladder_line` / `free_ship_from_display` (also on every profile push).
+  `last_cart_tier_pct`, `ladder_tick_1..6`, `ladder_tick_width`, plus `ladder_line` / `free_ship_from_display` (also on every profile push).
   Refreshed hourly for carts abandoned in the last 4 days (`artlounge_bento_open_carts`).
 - `$purchase`: `last_order_item_{1..5}_{name,qty,url,image_url}`, `last_order_item_count`.
 

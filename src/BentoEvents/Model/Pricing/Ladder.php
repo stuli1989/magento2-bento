@@ -13,7 +13,8 @@
  *  profile: ladder_line ("Orders over ₹799 ship free. Cross ₹2,999 and you get 5% off, …"), free_ship_from_display
  *  cart:    last_cart_discount(_display) — what Magento really takes off this cart (ladder, sale, Pebeo, coupon);
  *           last_cart_ships_free yes/no; last_cart_next_gap_display + last_cart_next_label (next step up);
- *           last_cart_tier_pct (bar fill, each step owns an equal share, like the minicart).
+ *           last_cart_tier_pct (bar fill, each step owns an equal share, like the minicart);
+ *           ladder_tick_1..6 + ladder_tick_width (the goal labels under the bar).
  */
 
 declare(strict_types=1);
@@ -27,6 +28,7 @@ use Magento\Store\Model\ScopeInterface;
 class Ladder
 {
     public const FREE_SHIPPING = 'free shipping';
+    public const TICK_SLOTS = 6; // free shipping + the 5 Cart Progress tiers
     private const TIERS = ['tier1', 'tier2', 'tier3', 'tier4', 'tier5'];
     private const CP = 'lucenttheme_cart_progress';
 
@@ -69,7 +71,25 @@ class Ladder
 
     public function cartFields(int $storeId, float $subtotal, float $discount): array
     {
-        return self::cart($this->steps($storeId), $subtotal, $discount) + $this->profileFields($storeId);
+        $steps = $this->steps($storeId);
+
+        return self::cart($steps, $subtotal, $discount) + self::ticks($steps) + $this->profileFields($storeId);
+    }
+
+    /**
+     * Labels under the tier bar, one per step ("₹799 · Free shipping", "₹2,999 · 5%"), so the customer sees the goals.
+     * Always TICK_SLOTS slots ('' unused, like the cart item slots); ladder_tick_width = each cell's % width.
+     */
+    public static function ticks(array $steps): array
+    {
+        $out = ['ladder_tick_width' => $steps ? (string)intdiv(100, count($steps)) : ''];
+        for ($n = 1; $n <= self::TICK_SLOTS; $n++) {
+            $s = $steps[$n - 1] ?? null;
+            $out['ladder_tick_' . $n] = $s === null ? '' : Money::displayWhole((int)ceil($s['at'])) . ' · '
+                . ($s['label'] === self::FREE_SHIPPING ? 'Free shipping' : substr($s['label'], 0, -4));
+        }
+
+        return $out;
     }
 
     /**

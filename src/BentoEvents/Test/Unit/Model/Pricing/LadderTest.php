@@ -60,6 +60,16 @@ class LadderTest extends TestCase
         $this->assertSame(self::LIVE_LINE, Ladder::line($this->ladder()->steps(1, '2026-10-18')));
     }
 
+    public function testTickLabelsShowTheGoals(): void
+    {
+        $t = $this->ladder()->cartFields(1, 3450.0, 172.5);
+        $this->assertSame(['25', '₹799 · Free shipping', '₹2,999 · 5%', '₹4,999 · 7.5%', '₹9,999 · 10%', '', ''], [
+            $t['ladder_tick_width'], $t['ladder_tick_1'], $t['ladder_tick_2'], $t['ladder_tick_3'], $t['ladder_tick_4'],
+            $t['ladder_tick_5'], $t['ladder_tick_6'],
+        ]);
+        $this->assertSame('', Ladder::ticks([])['ladder_tick_width']);
+    }
+
     public function testNothingTrueToSayMeansBlank(): void
     {
         $l = $this->ladder(['lucenttheme_cart_progress/general/enabled' => '0', 'carriers/freeshipping/active' => '0']);
