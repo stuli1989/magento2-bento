@@ -19,7 +19,7 @@ Fields the WhatsApp layer needs (00g WhatsApp Build Spec §1–2): Bento hands W
 Audit: `Build-Specs/research/pricing-robustness-audit.md` (BentoAutomationsToBuild). A ladder change, a sale or a new free-shipping threshold now reaches every email from Magento admin alone.
 - **`Model/Pricing/Ladder`**: the live ladder from `carriers/freeshipping` (active + `free_shipping_subtotal`) and the Lucenttheme Cart Progress tiers (enabled, start/end date; labels with a `%` become steps). Same rules as `TierProvider`, read from config, so email = minicart.
 - **Cart fields** on `$cart_abandoned` / `$checkout_abandoned`: `last_cart_discount` (paise) + `_display` (what Magento really takes off: ladder, sale, Pebeo, coupon; nothing for rule-744 items), `last_cart_ships_free` (`yes`/`no`), `last_cart_next_gap_display` + `last_cart_next_label` (next step up, e.g. `₹1,549` / `7.5% off` / `free shipping`), `last_cart_tier_pct` (bar fill). `''` when there is nothing true to say.
-- **Profile fields** on every profile push (orders, refunds, `$account_created`, backfill, nightly refresh) and every cart snapshot: `ladder_line` ("Orders over ₹799 ship free. Cross ₹2,999 and you get 5% off, …") and `free_ship_from_display`.
+- **Profile fields** on every profile push (orders, refunds, `$account_created`, backfill, nightly refresh), `$subscribe` and every cart snapshot: `ladder_line` ("Orders over ₹799 ship free. Cross ₹2,999 and you get 5% off, …") and `free_ship_from_display`.
 - **`last_cart_coupon_value_display`** (`₹200` / `10%`) from the coupon config.
 - **Cron `artlounge_bento_open_carts`** (hourly at :20, `Model/Pricing/OpenCartRefresh`): carts abandoned in the last 4 days get their fields rebuilt (fields only, no event), so the emails still to come follow a sale or ladder change.
 
@@ -27,7 +27,7 @@ Audit: `Build-Specs/research/pricing-robustness-audit.md` (BentoAutomationsToBui
 - **No coupon while a sale would reject it** (`Model/Coupon/SaleGuard`): an active, dated, no-coupon rule that discards later rules, gives > 0 and sits below the managed coupon rule's priority (the Dussehra 740/741 shape) → `coupon_eligible = false`, so the last email falls back to the plain note. Rule 744 (0 %) doesn't count. The blocking rule id is logged.
 
 ### Upgrade
-- `CheckoutAbandonedBuilder` and `CartAbandonedBuilder` gained `CustomerSnapshotLoader` and `Ladder` constructor arguments; `ProfileFieldsProvider` gained `Ladder`, `CouponGate` gained `SaleGuard`: clear `generated/code` (or `setup:di:compile` on production). No schema or config changes.
+- `CheckoutAbandonedBuilder` and `CartAbandonedBuilder` gained `CustomerSnapshotLoader` and `Ladder` constructor arguments; `ProfileFieldsProvider` and `SubscribeBuilder` gained `Ladder`, `CouponGate` gained `SaleGuard`: clear `generated/code` (or `setup:di:compile` on production). No schema or config changes.
 
 ---
 

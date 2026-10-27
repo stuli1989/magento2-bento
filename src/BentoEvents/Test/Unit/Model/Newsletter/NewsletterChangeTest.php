@@ -61,7 +61,7 @@ class NewsletterChangeTest extends TestCase
     {
         $config = $this->createMock(ConfigInterface::class);
         $config->method('getSource')->willReturn('artlounge');
-        $builder = new SubscribeBuilder(new EventEnvelope($config));
+        $builder = new SubscribeBuilder(new EventEnvelope($config), $this->createMock(\ArtLounge\BentoEvents\Model\Pricing\Ladder::class));
 
         $row = OutboxRow::fromArray([
             'id' => 3, 'event_type' => 'unsubscribe', 'entity_type' => 'subscriber', 'entity_id' => 10,
