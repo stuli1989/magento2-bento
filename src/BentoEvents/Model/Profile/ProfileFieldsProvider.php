@@ -2,7 +2,9 @@
 /**
  * Profile fields for /batch/subscribers, computed from full order history.
  * Sent with $purchase, $OrderCanceled, $OrderRefunded, $account_created, by bento:backfill and by the
- * nightly product-list refresh. Includes next_pick_*, new_in_*, usual_* (NextPicksProvider) unless they fail to compute.
+ * nightly product-list refresh. Includes next_pick_*, new_in_*, usual_* (NextPicksProvider) unless they fail to compute,
+ * and the live ladder (ladder_line, free_ship_from_display; Pricing\Ladder) so a pricing change reaches every
+ * lifecycle email by the next night without editing a template.
  */
 
 declare(strict_types=1);
@@ -12,6 +14,7 @@ namespace ArtLounge\BentoEvents\Model\Profile;
 use ArtLounge\BentoCore\Api\ConfigInterface;
 use ArtLounge\BentoEvents\Model\Payload\Phone;
 use ArtLounge\BentoEvents\Model\Picks\NextPicksProvider;
+use ArtLounge\BentoEvents\Model\Pricing\Ladder;
 
 class ProfileFieldsProvider
 {
@@ -19,7 +22,8 @@ class ProfileFieldsProvider
         private readonly ProfileLoader $loader,
         private readonly StatsCalculator $calculator,
         private readonly ConfigInterface $config,
-        private readonly NextPicksProvider $picks
+        private readonly NextPicksProvider $picks,
+        private readonly Ladder $ladder
     ) {
     }
 
@@ -69,6 +73,11 @@ class ProfileFieldsProvider
         // List fields keep '' on purpose: an empty slot must clear an older entry.
         foreach ($this->picks->fieldsFor(array_map(static fn ($r) => $r['primary_medium'] ?? null, $out)) as $email => $fields) {
             $out[$email] += $fields;
+        }
+        // '' kept too: an empty ladder (all tiers off) must clear yesterday's sentence.
+        $ladder = $this->ladder->profileFields(0);
+        foreach ($out as $email => $record) {
+            $out[$email] = $record + $ladder;
         }
 
         return $out;

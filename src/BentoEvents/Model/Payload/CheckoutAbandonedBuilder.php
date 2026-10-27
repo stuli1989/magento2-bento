@@ -25,6 +25,7 @@ use ArtLounge\BentoCore\Model\IstDate;
 use ArtLounge\BentoEvents\Model\Checkout\ContactStore;
 use ArtLounge\BentoEvents\Model\Coupon\CouponGate;
 use ArtLounge\BentoEvents\Model\Outbox\OutboxRow;
+use ArtLounge\BentoEvents\Model\Pricing\Ladder;
 use ArtLounge\BentoEvents\Model\Purchase\PurchaseDetector;
 
 class CheckoutAbandonedBuilder implements BuilderInterface
@@ -37,7 +38,8 @@ class CheckoutAbandonedBuilder implements BuilderInterface
         private readonly RecoveryUrlBuilder $urls,
         private readonly CouponGate $couponGate,
         private readonly EventEnvelope $envelope,
-        private readonly CustomerSnapshotLoader $customers
+        private readonly CustomerSnapshotLoader $customers,
+        private readonly Ladder $ladder
     ) {
     }
 
@@ -91,6 +93,7 @@ class CheckoutAbandonedBuilder implements BuilderInterface
                 'code' => $coupon['code'],
                 'expires_at' => $coupon['expires_at'] ?? null,
                 'expires_at_display' => IstDate::dayMonthOrNull($coupon['expires_at'] ?? null),
+                'value_display' => $coupon['value_display'] ?? null,
                 'recovery_url' => $this->urls->build($quoteId, $row->email, $row->storeId, $coupon['code']),
             ];
         }
@@ -103,6 +106,7 @@ class CheckoutAbandonedBuilder implements BuilderInterface
             $this->mapper->fields($snapshot),
             SnapshotFields::cart($details['cart']['items'], $subtotal, $details['recovery_url'])
                 + SnapshotFields::cartCoupon($details['coupon'] ?? null)
+            + $this->ladder->cartFields($row->storeId, $subtotal, (float)($snapshot['discount_amount'] ?? 0))
         ));
     }
 }

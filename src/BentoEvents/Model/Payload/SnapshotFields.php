@@ -52,7 +52,7 @@ final class SnapshotFields
      * $cart_abandoned and $checkout_abandoned (D5/D6). Eligible → the code, its auto-apply link and the expiry day;
      * otherwise blanked so an earlier cart's coupon can't resurface.
      *
-     * @param array|null $coupon details.coupon {code, recovery_url, expires_at_display} or null
+     * @param array|null $coupon details.coupon {code, recovery_url, expires_at_display, value_display} or null
      */
     public static function cartCoupon(?array $coupon): array
     {
@@ -61,6 +61,7 @@ final class SnapshotFields
             'last_cart_coupon_code' => self::str($coupon['code'] ?? null),
             'last_cart_coupon_url' => self::str($coupon['recovery_url'] ?? null),
             'last_cart_coupon_expires' => self::str($coupon['expires_at_display'] ?? null),
+            'last_cart_coupon_value_display' => self::str($coupon['value_display'] ?? null),
         ];
     }
 

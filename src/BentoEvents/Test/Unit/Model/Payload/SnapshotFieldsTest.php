@@ -83,12 +83,13 @@ class SnapshotFieldsTest extends TestCase
     public function testCouponFieldsWhenEligibleAndBlankedWhenNot(): void
     {
         $on = SnapshotFields::cartCoupon(['code' => 'BENTO-ABC234', 'recovery_url' => 'https://x/r/coupon/BENTO-ABC234',
-            'expires_at_display' => '20 October']);
+            'expires_at_display' => '20 October', 'value_display' => '₹200']);
         $this->assertSame([
             'last_cart_coupon_eligible' => 'yes',
             'last_cart_coupon_code' => 'BENTO-ABC234',
             'last_cart_coupon_url' => 'https://x/r/coupon/BENTO-ABC234',
             'last_cart_coupon_expires' => '20 October',
+            'last_cart_coupon_value_display' => '₹200',
         ], $on);
 
         $this->assertSame([
@@ -96,6 +97,7 @@ class SnapshotFieldsTest extends TestCase
             'last_cart_coupon_code' => '',
             'last_cart_coupon_url' => '',
             'last_cart_coupon_expires' => '',
+            'last_cart_coupon_value_display' => '',
         ], SnapshotFields::cartCoupon(null));
     }
 }

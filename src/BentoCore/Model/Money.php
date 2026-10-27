@@ -40,6 +40,12 @@ final class Money
         return $sign . self::SYMBOL . self::groupIndian((string)$whole) . '.' . $fraction;
     }
 
+    /** Whole rupees, no decimals ("₹2,999"), for thresholds and gaps in email copy. */
+    public static function displayWhole(int $rupees): string
+    {
+        return ($rupees < 0 ? '-' : '') . self::SYMBOL . self::groupIndian((string)abs($rupees));
+    }
+
     private static function groupIndian(string $digits): string
     {
         if (strlen($digits) <= 3) {

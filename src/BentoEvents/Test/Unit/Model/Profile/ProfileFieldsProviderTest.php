@@ -35,7 +35,7 @@ class ProfileFieldsProviderTest extends TestCase
             return $picks;
         });
 
-        return new ProfileFieldsProvider($loader, new StatsCalculator(), $config, $nextPicks);
+        return new ProfileFieldsProvider($loader, new StatsCalculator(), $config, $nextPicks, $this->createMock(\ArtLounge\BentoEvents\Model\Pricing\Ladder::class));
     }
 
     public function testPickFieldsAreAddedPerCustomerFromTheirPrimaryMedium(): void

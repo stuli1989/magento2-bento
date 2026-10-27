@@ -22,5 +22,10 @@
         <job name="artlounge_bento_coupon_cleanup" instance="ArtLounge\BentoEvents\Cron\CouponCleanup" method="execute">
             <schedule>0 4 * * *</schedule>
         </job>
+        <!-- Carts abandoned in the last 4 days: fresh ladder / discount / coupon fields, so a sale or ladder change
+             reaches the cart emails still to come. Hourly: a sale starting at midnight is picked up within the hour. -->
+        <job name="artlounge_bento_open_carts" instance="ArtLounge\BentoEvents\Cron\RefreshOpenCarts" method="execute">
+            <schedule>20 * * * *</schedule>
+        </job>
     </group>
 </config>

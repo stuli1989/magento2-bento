@@ -17,6 +17,8 @@ use ArtLounge\BentoEvents\Model\Payload\OrderSnapshotLoader;
 use ArtLounge\BentoEvents\Model\Payload\QuotePayloadMapper;
 use ArtLounge\BentoEvents\Model\Payload\QuoteSnapshotLoader;
 use ArtLounge\BentoEvents\Model\Payload\RecoveryUrlBuilder;
+use ArtLounge\BentoEvents\Model\Pricing\Ladder;
+use ArtLounge\BentoEvents\Test\Unit\Model\Pricing\LadderTest;
 use PHPUnit\Framework\TestCase;
 
 class QuoteBuildersTest extends TestCase
@@ -27,6 +29,7 @@ class QuoteBuildersTest extends TestCase
     private EventEnvelope $envelope;
     private CustomerSnapshotLoader $customers;
     private ?array $couponDecision = null;
+    private Ladder $ladder;
 
     protected function setUp(): void
     {
@@ -40,6 +43,7 @@ class QuoteBuildersTest extends TestCase
         $config = $this->createMock(ConfigInterface::class);
         $config->method('getSource')->willReturn('artlounge');
         $this->envelope = new EventEnvelope($config);
+        $this->ladder = new Ladder(LadderTest::liveConfig($this));
     }
 
     private function quote(array $o = []): array
@@ -86,7 +90,7 @@ class QuoteBuildersTest extends TestCase
     {
         $this->orders->method('load')->with(45)->willReturn(Fixtures::order(['state' => 'pending_payment', 'quote_id' => 9001]));
         $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
-            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
 
         $e = $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->event;
 
@@ -107,7 +111,7 @@ class QuoteBuildersTest extends TestCase
         $this->orders->method('load')->with(45)->willReturn(Fixtures::order(['state' => 'pending_payment', 'quote_id' => 9001]));
         $this->couponDecision = ['eligible' => true, 'coupon' => ['code' => 'BENTO-ABC234', 'expires_at' => '2026-10-20T15:30:00+05:30']];
         $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
-            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
 
         $e = $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->event;
 
@@ -136,7 +140,7 @@ class QuoteBuildersTest extends TestCase
             ->willReturn(['eligible' => false, 'coupon' => null]);
 
         foreach ([['contact', 3], ['order', 45]] as [$type, $id]) {
-            (new CheckoutAbandonedBuilder($this->orders, $this->quotes, $contacts, new QuotePayloadMapper(), $this->urls, $gate, $this->envelope, $this->customers))
+            (new CheckoutAbandonedBuilder($this->orders, $this->quotes, $contacts, new QuotePayloadMapper(), $this->urls, $gate, $this->envelope, $this->customers, $this->ladder))
                 ->build($this->row('checkout_abandoned', $type, $id));
         }
     }
@@ -145,7 +149,7 @@ class QuoteBuildersTest extends TestCase
     {
         $this->orders->method('load')->willReturn(Fixtures::order(['state' => 'processing']));
         $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
-            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
         $this->assertTrue($b->build($this->row('checkout_abandoned', 'order', 45))->isSkip());
     }
 
@@ -156,7 +160,7 @@ class QuoteBuildersTest extends TestCase
             'id' => 3, 'quote_id' => 9001, 'rzp_order_id' => 'order_X1', 'email' => 'cart+bentotest@x.com', 'phone' => '+919000000001',
         ]);
         $this->quotes->method('load')->with(9001)->willReturn($this->quote(['email' => null, 'phone' => null]));
-        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $contacts, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $contacts, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
 
         $e = $b->build($this->row('checkout_abandoned', 'contact', 3, ['source' => 'contact_captured']))->event;
 
@@ -168,7 +172,7 @@ class QuoteBuildersTest extends TestCase
     public function testCartAbandonedBelowThresholdIsNotEligible(): void
     {
         $this->quotes->method('load')->willReturn($this->quote());
-        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
 
         $d = $b->build($this->row('cart_abandoned', 'quote', 9001))->event['details'];
 
@@ -182,7 +186,7 @@ class QuoteBuildersTest extends TestCase
     {
         $this->quotes->method('load')->willReturn($this->quote());
         $this->couponDecision = ['eligible' => true, 'coupon' => ['code' => 'BENTO-ABC234', 'expires_at' => '2026-10-20T15:30:00+05:30']];
-        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
 
         $d = $b->build($this->row('cart_abandoned', 'quote', 9001))->event['details'];
 
@@ -203,7 +207,7 @@ class QuoteBuildersTest extends TestCase
             $this->quote(['is_active' => false]),
             null
         );
-        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
         for ($i = 0; $i < 4; $i++) {
             $this->assertTrue($b->build($this->row('cart_abandoned', 'quote', 9001))->isSkip());
         }
@@ -213,7 +217,7 @@ class QuoteBuildersTest extends TestCase
     {
         $this->quotes->method('load')->willReturn($this->quote());
         $this->couponDecision = ['eligible' => true, 'coupon' => ['code' => 'BENTO-ABC234', 'expires_at' => '2026-10-20T15:30:00+05:30']];
-        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
 
         $f = $b->build($this->row('cart_abandoned', 'quote', 9001))->event['fields'];
 
@@ -238,7 +242,7 @@ class QuoteBuildersTest extends TestCase
     public function testCartAbandonedBelowThresholdBlanksCouponFields(): void
     {
         $this->quotes->method('load')->willReturn($this->quote());
-        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
 
         $f = $b->build($this->row('cart_abandoned', 'quote', 9001))->event['fields'];
 
@@ -251,7 +255,7 @@ class QuoteBuildersTest extends TestCase
     {
         $this->orders->method('load')->with(45)->willReturn(Fixtures::order(['state' => 'pending_payment']));
         $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
-            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
 
         $f = $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->event['fields'];
 
@@ -279,7 +283,7 @@ class QuoteBuildersTest extends TestCase
         $this->orders->method('load')->with(45)->willReturn(Fixtures::order(['state' => 'pending_payment', 'quote_id' => 9001]));
         $this->customers->expects($this->never())->method('defaultPhone');
         $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
-            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
 
         $d = $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->event['details'];
 
@@ -292,7 +296,7 @@ class QuoteBuildersTest extends TestCase
         $this->orders->method('load')->willReturn(Fixtures::order(['state' => 'pending_payment', 'phone' => null, 'customer_id' => 77]));
         $this->customers->method('defaultPhone')->with(77)->willReturn('098200 55555');
         $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
-            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
 
         $e = $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->event;
 
@@ -305,7 +309,7 @@ class QuoteBuildersTest extends TestCase
         $contacts = $this->createMock(ContactStore::class);
         $contacts->method('getById')->willReturn(['id' => 3, 'quote_id' => 9001, 'email' => 'cart+bentotest@x.com', 'phone' => '+919000000001']);
         $this->quotes->method('load')->willReturn($this->quote());
-        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $contacts, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $contacts, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
 
         $d = $b->build($this->row('checkout_abandoned', 'contact', 3, ['source' => 'contact_captured']))->event['details'];
 
@@ -319,7 +323,7 @@ class QuoteBuildersTest extends TestCase
         $contacts->method('getById')->willReturn(['id' => 3, 'quote_id' => 9001, 'email' => 'cart+bentotest@x.com', 'phone' => null]);
         $this->quotes->method('load')->willReturn($this->quote(['phone' => null, 'customer_id' => null]));
         $this->customers->expects($this->never())->method('defaultPhone');
-        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $contacts, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $contacts, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
 
         $d = $b->build($this->row('checkout_abandoned', 'contact', 3))->event['details'];
 
@@ -335,12 +339,26 @@ class QuoteBuildersTest extends TestCase
             $this->quote(['phone' => null, 'customer_id' => null])
         );
         $this->customers->expects($this->once())->method('defaultPhone')->with(77)->willReturn('+91 99000 11111');
-        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers);
+        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
 
         $this->assertSame('+919876543210', $b->build($this->row('cart_abandoned', 'quote', 9001))->event['details']['phone']);
         $this->assertSame('+919900011111', $b->build($this->row('cart_abandoned', 'quote', 9001))->event['details']['phone']);
         $d = $b->build($this->row('cart_abandoned', 'quote', 9001))->event['details'];
         $this->assertNull($d['phone']);
         $this->assertArrayNotHasKey('order_increment_id', $d);
+    }
+
+    public function testCartAbandonedCarriesLivePricingFields(): void
+    {
+        $this->quotes->method('load')->willReturn($this->quote(['subtotal' => 3450.0, 'discount_amount' => 172.5]));
+        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
+        $f = $b->build($this->row('cart_abandoned', 'quote', 9001))->event['fields'];
+
+        $this->assertSame('₹173', $f['last_cart_discount_display'], 'what Magento takes off, not a typed %');
+        $this->assertSame('yes', $f['last_cart_ships_free']);
+        $this->assertSame('₹1,549', $f['last_cart_next_gap_display']);
+        $this->assertSame('7.5% off', $f['last_cart_next_label']);
+        $this->assertSame(LadderTest::LIVE_LINE, $f['ladder_line']);
+        $this->assertSame('', $f['last_cart_coupon_value_display']);
     }
 }
