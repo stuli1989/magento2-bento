@@ -16,6 +16,18 @@ class CustomerSnapshotLoader
     ) {
     }
 
+    /** The telephone on the customer's default billing address (else their first address); null if none or on any error. */
+    public function defaultPhone(int $customerId): ?string
+    {
+        try {
+            $phone = $this->load($customerId)['default_billing']['telephone'] ?? null;
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $phone !== null && $phone !== '' ? (string)$phone : null;
+    }
+
     public function load(int $customerId): ?array
     {
         try {

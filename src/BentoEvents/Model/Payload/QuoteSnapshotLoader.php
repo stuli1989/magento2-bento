@@ -85,6 +85,7 @@ class QuoteSnapshotLoader
             'firstname' => $quote->getCustomerFirstname() ?: $billing?->getFirstname(),
             'lastname' => $quote->getCustomerLastname() ?: $billing?->getLastname(),
             'phone' => $billing?->getTelephone() ?: $address?->getTelephone(),
+            'customer_id' => $quote->getCustomerId() ? (int)$quote->getCustomerId() : null,
             'items' => $items,
         ];
     }

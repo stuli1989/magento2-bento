@@ -12,9 +12,10 @@ use PHPUnit\Framework\TestCase;
 
 class ReviewSnapshotLoaderTest extends TestCase
 {
-    private function loader($row, array $votes): ReviewSnapshotLoader
+    private function loader($row, array $votes, bool $hasSourceColumn = false): ReviewSnapshotLoader
     {
         $conn = $this->createMock(AdapterInterface::class);
+        $conn->method('tableColumnExists')->with('review_detail', 'artlounge_source')->willReturn($hasSourceColumn);
         $conn->method('select')->willReturn(new Select());
         $conn->method('fetchRow')->willReturn($row);
         $conn->method('fetchCol')->willReturn($votes);
@@ -34,8 +35,18 @@ class ReviewSnapshotLoaderTest extends TestCase
 
         $this->assertSame([
             'review_id' => 18342, 'product_id' => 500, 'store_id' => 1, 'status_id' => 2, 'nickname' => 'Meera',
-            'customer_id' => null, 'created_at' => '2026-10-14 05:00:00', 'votes' => [5, 4],
+            'customer_id' => null, 'created_at' => '2026-10-14 05:00:00', 'votes' => [5, 4], 'source' => null,
         ], $s);
+    }
+
+    public function testReadsTheWismoSourceColumnWhenItExists(): void
+    {
+        $row = [
+            'review_id' => '18342', 'entity_pk_value' => '500', 'status_id' => '2', 'created_at' => null,
+            'nickname' => 'Priya S.', 'customer_id' => '77', 'store_id' => '1', 'source' => 'whatsapp',
+        ];
+        $this->assertSame('whatsapp', $this->loader($row, ['5'], true)->load(18342)['source']);
+        $this->assertNull($this->loader(['source' => ''] + $row, ['5'], true)->load(18342)['source'], 'blank = storefront');
     }
 
     public function testMissingReviewIsNull(): void

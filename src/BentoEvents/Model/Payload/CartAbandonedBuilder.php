@@ -8,6 +8,9 @@
  * code and is used only by that last email — so earlier emails can't leak the discount.
  *
  * Also writes the cart snapshot + coupon fields onto the subscriber (SnapshotFields) for the templates.
+ *
+ * details.phone (v2.3.0, WhatsApp layer): quote billing then shipping telephone, else the customer's
+ * default billing telephone; E.164 or null.
  */
 
 declare(strict_types=1);
@@ -25,7 +28,8 @@ class CartAbandonedBuilder implements BuilderInterface
         private readonly QuotePayloadMapper $mapper,
         private readonly RecoveryUrlBuilder $urls,
         private readonly CouponGate $couponGate,
-        private readonly EventEnvelope $envelope
+        private readonly EventEnvelope $envelope,
+        private readonly CustomerSnapshotLoader $customers
     ) {
     }
 
@@ -42,7 +46,12 @@ class CartAbandonedBuilder implements BuilderInterface
             return BuildResult::skip('cart no longer active or empty');
         }
 
+        if (empty($quote['phone']) && !empty($quote['customer_id'])) {
+            $quote['phone'] = $this->customers->defaultPhone((int)$quote['customer_id']);
+        }
+
         $details = $this->mapper->details($quote);
+        $details['phone'] = $details['customer']['phone'];
         $details['recovery_url'] = $this->urls->build($row->entityId, $row->email, $row->storeId);
 
         $decision = $this->couponGate->evaluate((float)$quote['subtotal'], $row->entityId, $row->storeId);

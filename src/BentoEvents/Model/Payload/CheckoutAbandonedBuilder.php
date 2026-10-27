@@ -11,6 +11,10 @@
  * on the quote, so a quote that already got one from $cart_abandoned reuses it — never a second code.
  *
  * Writes the cart snapshot + coupon fields onto the subscriber (SnapshotFields) for the templates.
+ *
+ * WhatsApp layer (v2.3.0, 00g §2): details.phone (E.164 or null) on both sources — captured contact →
+ * order/quote billing then shipping telephone → the customer's default billing telephone; and
+ * details.order_increment_id (dismissed only: Razorpay's pending_payment order, the one WISMO makes payable).
  */
 
 declare(strict_types=1);
@@ -32,7 +36,8 @@ class CheckoutAbandonedBuilder implements BuilderInterface
         private readonly QuotePayloadMapper $mapper,
         private readonly RecoveryUrlBuilder $urls,
         private readonly CouponGate $couponGate,
-        private readonly EventEnvelope $envelope
+        private readonly EventEnvelope $envelope,
+        private readonly CustomerSnapshotLoader $customers
     ) {
     }
 
@@ -64,8 +69,16 @@ class CheckoutAbandonedBuilder implements BuilderInterface
             $source = 'contact_captured';
         }
 
+        if (empty($snapshot['phone']) && !empty($snapshot['customer_id'])) {
+            $snapshot['phone'] = $this->customers->defaultPhone((int)$snapshot['customer_id']);
+        }
+
         $details = $this->mapper->details($snapshot);
         $details['abandon_source'] = (string)$row->contextValue('source', $source);
+        $details['phone'] = $details['customer']['phone'];
+        if ($source === 'dismissed') {
+            $details['order_increment_id'] = (string)($snapshot['increment_id'] ?? '');
+        }
         $quoteId = (int)$snapshot['quote_id'];
         $subtotal = (float)($snapshot['subtotal'] ?? 0);
         $details['recovery_url'] = $this->urls->build($quoteId, $row->email, $row->storeId);

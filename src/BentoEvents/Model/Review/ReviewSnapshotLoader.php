@@ -3,8 +3,10 @@
  * Review → plain snapshot for ReviewSubmittedBuilder, read at send time (by then the controller has
  * also saved the rating votes, which happens after the review row itself is saved).
  *
+ * source: ReviewSource::COLUMN when Artlounge_Wismo has added it ('whatsapp' for WhatsApp reviews), else null.
+ *
  * @return array{review_id:int, product_id:int, store_id:int, status_id:int, nickname:?string,
- *               customer_id:?int, created_at:?string, votes:int[]}|null
+ *               customer_id:?int, created_at:?string, votes:int[], source:?string}|null
  */
 
 declare(strict_types=1);
@@ -22,13 +24,19 @@ class ReviewSnapshotLoader
     public function load(int $reviewId): ?array
     {
         $conn = $this->resource->getConnection();
+        $detailColumns = ['nickname', 'customer_id', 'store_id'];
+        $detailTable = $this->resource->getTableName(ReviewSource::TABLE);
+        $hasSource = (bool)$conn->tableColumnExists($detailTable, ReviewSource::COLUMN);
+        if ($hasSource) {
+            $detailColumns['source'] = ReviewSource::COLUMN;
+        }
         $row = $conn->fetchRow(
             $conn->select()
                 ->from(['r' => $this->resource->getTableName('review')], ['review_id', 'entity_pk_value', 'status_id', 'created_at'])
                 ->join(
-                    ['d' => $this->resource->getTableName('review_detail')],
+                    ['d' => $detailTable],
                     'd.review_id = r.review_id',
-                    ['nickname', 'customer_id', 'store_id']
+                    $detailColumns
                 )
                 ->where('r.review_id = ?', $reviewId)
                 ->limit(1)
@@ -51,6 +59,7 @@ class ReviewSnapshotLoader
             'customer_id' => !empty($row['customer_id']) ? (int)$row['customer_id'] : null,
             'created_at' => $row['created_at'] ?? null,
             'votes' => array_map('intval', $votes),
+            'source' => isset($row['source']) && $row['source'] !== '' ? (string)$row['source'] : null,
         ];
     }
 }

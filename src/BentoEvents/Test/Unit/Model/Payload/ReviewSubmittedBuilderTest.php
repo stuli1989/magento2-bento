@@ -146,6 +146,19 @@ class ReviewSubmittedBuilderTest extends TestCase
         $this->assertSame(3, $c['rating'], '2.5 rounds half up');
     }
 
+    public function testWhatsAppReviewIsSkippedBecauseWismoSendsItsOwnEvent(): void
+    {
+        $this->reviews->method('load')->willReturnOnConsecutiveCalls(
+            $this->review(['source' => 'whatsapp']),
+            $this->review(['source' => null])
+        );
+
+        $r = $this->builder()->build($this->row('meera+bentotest@example.com'));
+        $this->assertTrue($r->isSkip());
+        $this->assertStringContainsString('WhatsApp', (string)$r->skipReason);
+        $this->assertFalse($this->builder()->build($this->row('meera+bentotest@example.com'))->isSkip());
+    }
+
     public function testDeletedReviewIsSkipped(): void
     {
         $this->reviews->method('load')->willReturn(null);

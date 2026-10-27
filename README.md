@@ -23,14 +23,14 @@ cron artlounge_bento_outbox_send (every minute, DB lock, ≤100 rows, ≤30 s)
 | `$view` | browser | PDP view, once per product per day |
 | `$cart_updated` | browser | any cart change anywhere (customer-data diff, 3 s debounce) |
 | `$checkout_started` | server | Magic Checkout popup opened by a logged-in customer (once per quote) |
-| `$checkout_abandoned` | server | popup dismissed (Razorpay `pending_payment` order) or contact captured and no payment within the delay; same coupon gate as `$cart_abandoned`, reusing the quote's code if it already has one |
-| `$cart_abandoned` | server cron | identified cart idle ≥ delay, ≥ min value; `coupon_eligible` + coupon only above the threshold |
+| `$checkout_abandoned` | server | popup dismissed (Razorpay `pending_payment` order) or contact captured and no payment within the delay; same coupon gate as `$cart_abandoned`, reusing the quote's code if it already has one; `details.phone` (E.164 or null) and, dismissed only, `details.order_increment_id` of that pending order |
+| `$cart_abandoned` | server cron | identified cart idle ≥ delay, ≥ min value; `coupon_eligible` + coupon only above the threshold; `details.phone` (E.164 or null) |
 | `$purchase` | server | order first reaches processing/complete (COD or captured prepaid); `unique.key` = increment id |
 | `$OrderCanceled` | server | order canceled after a `$purchase` |
 | `$OrderRefunded` | server | credit memo |
 | `$subscribe` / `$unsubscribe` | server | newsletter status change |
 | `$account_created` | server | customer registration |
-| `$review_submitted` | server | product review submitted on the storefront (logged-in → account email; guest → email-click `bento_uuid`, else not sent) |
+| `$review_submitted` | server | product review submitted on the storefront (logged-in → account email; guest → email-click `bento_uuid`, else not sent); never for WhatsApp reviews (`review_detail.artlounge_source = 'whatsapp'`, written by `Artlounge_Wismo`, which sends its own) |
 
 The plugin sends **no tags**. Every amount has a paise integer and a `*_display` twin (`₹1,488.60`).
 Every date is ISO-8601 IST (`2026-10-13T15:30:00+05:30`) from one formatter (`BentoCore\Model\IstDate`).

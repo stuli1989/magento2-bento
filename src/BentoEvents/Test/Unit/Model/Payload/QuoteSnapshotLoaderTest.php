@@ -54,6 +54,7 @@ class QuoteSnapshotLoaderTest extends TestCase
             public function getCustomerEmail() { return 'a@b.c'; }
             public function getCustomerFirstname() { return 'A'; }
             public function getCustomerLastname() { return 'B'; }
+            public function getCustomerId() { return 77; }
         };
         $repo = $this->createMock(CartRepositoryInterface::class);
         $repo->method('get')->willReturn($quote);
@@ -77,5 +78,6 @@ class QuoteSnapshotLoaderTest extends TestCase
         $this->assertSame('https://x/parent', $s['items'][0]['url']);
         $this->assertNull($s['items'][1]['image']);
         $this->assertSame('https://x/plain', $s['items'][1]['url']);
+        $this->assertSame(77, $s['customer_id']);
     }
 }

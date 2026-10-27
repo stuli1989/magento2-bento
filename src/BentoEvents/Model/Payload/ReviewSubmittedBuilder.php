@@ -8,6 +8,9 @@
  *
  * Recipient: the row's email (registered customer), else the subscriber behind the row's bento_uuid
  * (guest who arrived from a Bento email). No identity → skipped, never sent.
+ *
+ * WhatsApp reviews (ReviewSource: review_detail.artlounge_source = 'whatsapp', written by Artlounge_Wismo)
+ * are skipped: WISMO sends its own $review_submitted with details.channel = "whatsapp".
  */
 
 declare(strict_types=1);
@@ -16,6 +19,7 @@ namespace ArtLounge\BentoEvents\Model\Payload;
 
 use ArtLounge\BentoEvents\Model\Outbox\OutboxRow;
 use ArtLounge\BentoEvents\Model\Review\ReviewSnapshotLoader;
+use ArtLounge\BentoEvents\Model\Review\ReviewSource;
 use ArtLounge\BentoEvents\Model\Review\SubscriberEmailResolver;
 
 class ReviewSubmittedBuilder implements BuilderInterface
@@ -35,6 +39,9 @@ class ReviewSubmittedBuilder implements BuilderInterface
         $review = $this->reviews->load($row->entityId);
         if ($review === null) {
             return BuildResult::skip('review ' . $row->entityId . ' not found');
+        }
+        if (($review['source'] ?? null) === ReviewSource::WHATSAPP) {
+            return BuildResult::skip('WhatsApp review: WISMO sends its own $review_submitted');
         }
 
         $email = $row->email;

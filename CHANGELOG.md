@@ -4,6 +4,22 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.3.0] — unreleased
+
+Fields the WhatsApp layer needs (00g WhatsApp Build Spec §1–2): Bento hands WISMO the phone and, for a dismissed checkout, the pending order to make payable in WhatsApp; and WhatsApp reviews don't get a second `$review_submitted`.
+
+### Added
+- **`details.phone`** on `$checkout_abandoned` (both sources) and `$cart_abandoned`: E.164 (`+91…`, `Phone::normalize`) or `null`, always present. Order: the number captured in the Magic Checkout popup (contact-captured) → the order's / quote's billing, then shipping telephone → the customer's default billing address telephone (`CustomerSnapshotLoader::defaultPhone`, logged-in only). The same number now also reaches `details.customer.phone` and the subscriber's `phone` field when it came from the customer fallback. Bento's webhook sends `event.details.phone` (else `visitor.phone`) to WISMO.
+- **`details.order_increment_id`** on `$checkout_abandoned` with `abandon_source = dismissed`: the increment id of the `pending_payment` order Razorpay created on dismissal (`order_no` in the Bento → WISMO cart webhook). Not sent for contact-captured checkouts (no order exists yet).
+
+### Changed
+- **`$review_submitted` skips WhatsApp reviews.** A review whose `review_detail.artlounge_source` is `whatsapp` (`Model/Review/ReviewSource`) is skipped at send time — WISMO posts its own `$review_submitted` with `details.channel = "whatsapp"`. `Artlounge_Wismo` owns that column (its `db_schema.xml` adds `review_detail.artlounge_source`, varchar(32), nullable, NULL for storefront reviews); the plugin reads it only when it exists, so nothing changes until that module ships. (Those reviews are created in cron, which the storefront-only observer already ignores; this is the explicit guard.)
+
+### Upgrade
+- `CheckoutAbandonedBuilder` and `CartAbandonedBuilder` gained a `CustomerSnapshotLoader` constructor argument: clear `generated/code` (or `setup:di:compile` on production). No schema or config changes.
+
+---
+
 ## [2.2.1] — 2026-10-25
 
 ### Changed

@@ -15,4 +15,5 @@ interface AdapterInterface
     public function fetchRow($select, $bind = []);
     public function fetchCol($select, $bind = []);
     public function delete($table, $where = []);
+    public function tableColumnExists($tableName, $columnName, $schemaName = null);
 }
