@@ -4,7 +4,7 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
-## [2.3.0] — unreleased
+## [2.3.0] — 2026-10-29
 
 Fields the WhatsApp layer needs (00g WhatsApp Build Spec §1–2): Bento hands WISMO the phone and, for a dismissed checkout, the pending order to make payable in WhatsApp; and WhatsApp reviews don't get a second `$review_submitted`.
 
