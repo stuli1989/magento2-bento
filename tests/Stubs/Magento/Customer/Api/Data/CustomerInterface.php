@@ -8,6 +8,7 @@ interface CustomerInterface
 {
     public function getId();
     public function getEmail();
+    public function getConfirmation();
     public function getFirstname();
     public function getLastname();
     public function getCreatedAt();

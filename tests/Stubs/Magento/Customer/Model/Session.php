@@ -14,6 +14,7 @@ class Session
     public function isLoggedIn(): bool { return $this->loggedIn; }
 
     public function setCustomerId(?int $id): void { $this->customerId = $id; }
+    public function setCustomerDataAsLoggedIn($customer) { return $this; }
     public function getCustomerId() { return $this->customerId; }
 
     public function setBeforeAuthUrl(string $url): void { $this->data['before_auth_url'] = $url; }

@@ -12,11 +12,15 @@ namespace ArtLounge\BentoEvents\Controller\Cart;
 
 use ArtLounge\BentoEvents\Model\RecoveryToken;
 use Magento\Checkout\Model\Session as CheckoutSession;
+use Magento\Customer\Api\CustomerRepositoryInterface;
+use Magento\Customer\Model\AuthenticationInterface;
 use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\App\Action\HttpGetActionInterface;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Framework\Message\ManagerInterface as MessageManager;
+use Magento\Framework\Stdlib\Cookie\CookieMetadataFactory;
+use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\UrlInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
 use Magento\Store\Model\StoreManagerInterface;
@@ -24,6 +28,8 @@ use Psr\Log\LoggerInterface;
 
 class Recover implements HttpGetActionInterface
 {
+    private const CACHE_SESSION_COOKIE = 'mage-cache-sessid';
+
     public function __construct(
         private readonly RequestInterface $request,
         private readonly RedirectFactory $redirectFactory,
@@ -34,7 +40,11 @@ class Recover implements HttpGetActionInterface
         private readonly UrlInterface $urlBuilder,
         private readonly MessageManager $messageManager,
         private readonly LoggerInterface $logger,
-        private readonly StoreManagerInterface $storeManager
+        private readonly StoreManagerInterface $storeManager,
+        private readonly CustomerRepositoryInterface $customerRepository,
+        private readonly AuthenticationInterface $authentication,
+        private readonly CookieManagerInterface $cookieManager,
+        private readonly CookieMetadataFactory $cookieMetadataFactory
     ) {
     }
 
@@ -100,7 +110,10 @@ class Recover implements HttpGetActionInterface
                 $isSameCustomerLoggedIn = $this->customerSession->isLoggedIn()
                     && (int)$this->customerSession->getCustomerId() === (int)$quote->getCustomerId();
 
-                if ($isSameCustomerLoggedIn) {
+                // The signed link was emailed to this customer, the same proof the storefront's own
+                // email sign-in accepts, so a logged-out customer goes straight to their cart.
+                if ($isSameCustomerLoggedIn
+                    || (!$this->customerSession->isLoggedIn() && $quoteEmail !== '' && $this->signIn((int)$quote->getCustomerId()))) {
                     $this->checkoutSession->setQuoteId($quoteId);
                     $this->messageManager->addSuccessMessage(
                         __('Your cart has been restored.')
@@ -178,6 +191,31 @@ class Recover implements HttpGetActionInterface
                 __('We could not restore your cart. Please try again or contact support.')
             );
             return $redirect->setPath('checkout/cart');
+        }
+    }
+
+    /**
+     * Log the customer in as core's LoginPost does: refuse an unconfirmed or locked account, then
+     * drop mage-cache-sessid so customer-data.js forgets the guest's cached sections.
+     */
+    private function signIn(int $customerId): bool
+    {
+        try {
+            $customer = $this->customerRepository->getById($customerId);
+            if ($customer->getConfirmation() || $this->authentication->isLocked($customerId)) {
+                return false;
+            }
+            $this->customerSession->setCustomerDataAsLoggedIn($customer);
+            if ($this->cookieManager->getCookie(self::CACHE_SESSION_COOKIE)) {
+                $this->cookieManager->deleteCookie(
+                    self::CACHE_SESSION_COOKIE,
+                    $this->cookieMetadataFactory->createCookieMetadata()->setPath('/')
+                );
+            }
+            return true;
+        } catch (\Exception $e) {
+            $this->logger->warning('Bento recovery sign-in failed', ['customer_id' => $customerId, 'error' => $e->getMessage()]);
+            return false;
         }
     }
 

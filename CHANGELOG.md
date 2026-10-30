@@ -4,6 +4,13 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.3.2] — 2026-10-30
+
+### Changed
+- **Cart recovery links now sign a logged-out customer in.** `bento/cart/recover` used to send a registered customer who wasn't logged in on that device to the sign-in page. The signed token now logs them in (as `LoginPost` does: `setCustomerDataAsLoggedIn`, then the `mage-cache-sessid` cookie is dropped) and restores the cart. Unconfirmed or locked accounts still go to the sign-in page, and a browser logged in as someone else is still refused. Token lifetime is unchanged (7 days).
+
+---
+
 ## [2.3.1] — 2026-10-30
 
 ### Fixed

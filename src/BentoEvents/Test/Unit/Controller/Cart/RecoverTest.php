@@ -10,11 +10,17 @@ namespace ArtLounge\BentoEvents\Test\Unit\Controller\Cart;
 use ArtLounge\BentoEvents\Controller\Cart\Recover;
 use ArtLounge\BentoEvents\Model\RecoveryToken;
 use Magento\Checkout\Model\Session as CheckoutSession;
+use Magento\Customer\Api\CustomerRepositoryInterface;
+use Magento\Customer\Api\Data\CustomerInterface;
+use Magento\Customer\Model\AuthenticationInterface;
 use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Framework\Message\ManagerInterface as MessageManager;
+use Magento\Framework\Stdlib\Cookie\CookieMetadataFactory;
+use Magento\Framework\Stdlib\Cookie\PublicCookieMetadata;
+use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\UrlInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
 use Magento\Quote\Api\Data\CartInterface;
@@ -226,6 +232,53 @@ class RecoverTest extends TestCase
         $controller->execute();
     }
 
+    public function testSignedLinkLogsInLoggedOutCustomerAndRestoresCart(): void
+    {
+        [$mocks, $customer] = $this->loggedOutCustomerCart();
+        $metadata = $this->createMock(PublicCookieMetadata::class);
+        $metadata->method('setPath')->with('/')->willReturnSelf();
+        $mocks['cookieMetadataFactory']->method('createCookieMetadata')->willReturn($metadata);
+        $mocks['cookieManager']->method('getCookie')->with('mage-cache-sessid')->willReturn('1');
+
+        $mocks['customerSession']->expects($this->once())->method('setCustomerDataAsLoggedIn')->with($customer);
+        $mocks['cookieManager']->expects($this->once())->method('deleteCookie')->with('mage-cache-sessid', $metadata);
+        $mocks['checkoutSession']->expects($this->once())->method('setQuoteId')->with(10);
+        $mocks['redirect']->expects($this->once())->method('setPath')->with('checkout/cart', $this->anything())->willReturn($mocks['redirect']);
+
+        $this->createRecoverController($mocks)->execute();
+    }
+
+    public function testLockedAccountStillGoesToTheLoginPage(): void
+    {
+        [$mocks] = $this->loggedOutCustomerCart();
+        $mocks['authentication']->method('isLocked')->with(7)->willReturn(true);
+
+        $mocks['customerSession']->expects($this->never())->method('setCustomerDataAsLoggedIn');
+        $mocks['checkoutSession']->expects($this->never())->method('setQuoteId');
+        $mocks['redirect']->expects($this->once())->method('setPath')->with('customer/account/login')->willReturn($mocks['redirect']);
+
+        $this->createRecoverController($mocks)->execute();
+    }
+
+    /** @return array{0: array, 1: CustomerInterface} */
+    private function loggedOutCustomerCart(): array
+    {
+        $mocks = $this->createRecoverMocks();
+        $this->mockRequestParams($mocks['request'], ['recover' => 'signed-token']);
+        $mocks['recoveryToken']->method('parse')->willReturn(['quote_id' => 10, 'email' => 'test@example.com', 'store_id' => 1]);
+        $quote = $this->createMock(CartInterface::class);
+        $quote->method('getCustomerEmail')->willReturn('test@example.com');
+        $quote->method('getIsActive')->willReturn(true);
+        $quote->method('getItemsCount')->willReturn(1);
+        $quote->method('getCustomerId')->willReturn(7);
+        $quote->method('getStoreId')->willReturn(1);
+        $mocks['cartRepository']->method('get')->willReturn($quote);
+        $mocks['customerSession']->method('isLoggedIn')->willReturn(false);
+        $customer = $this->createMock(CustomerInterface::class);
+        $mocks['customerRepository']->method('getById')->with(7)->willReturn($customer);
+        return [$mocks, $customer];
+    }
+
     public function testExecuteHandlesCartRepositoryException(): void
     {
         $mocks = $this->createRecoverMocks();
@@ -251,7 +304,7 @@ class RecoverTest extends TestCase
         $redirectFactory->method('create')->willReturn($redirect);
         $customerSession = $this->getMockBuilder(CustomerSession::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['isLoggedIn', 'getCustomerId', 'setBeforeAuthUrl', 'setAfterAuthUrl'])
+            ->onlyMethods(['isLoggedIn', 'getCustomerId', 'setBeforeAuthUrl', 'setAfterAuthUrl', 'setCustomerDataAsLoggedIn'])
             ->getMock();
 
         $store = $this->createMock(StoreInterface::class);
@@ -271,6 +324,10 @@ class RecoverTest extends TestCase
             'messageManager' => $this->createMock(MessageManager::class),
             'logger' => $this->createMock(LoggerInterface::class),
             'storeManager' => $storeManager,
+            'customerRepository' => $this->createMock(CustomerRepositoryInterface::class),
+            'authentication' => $this->createMock(AuthenticationInterface::class),
+            'cookieManager' => $this->createMock(CookieManagerInterface::class),
+            'cookieMetadataFactory' => $this->createMock(CookieMetadataFactory::class),
         ];
     }
 
@@ -286,7 +343,11 @@ class RecoverTest extends TestCase
             $mocks['urlBuilder'],
             $mocks['messageManager'],
             $mocks['logger'],
-            $mocks['storeManager']
+            $mocks['storeManager'],
+            $mocks['customerRepository'],
+            $mocks['authentication'],
+            $mocks['cookieManager'],
+            $mocks['cookieMetadataFactory']
         );
     }
 
