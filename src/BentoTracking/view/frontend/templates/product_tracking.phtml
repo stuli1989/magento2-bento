@@ -58,10 +58,12 @@ require(['jquery', 'Magento_Customer/js/customer-data', 'domReady!'], function($
 
         // Re-identify from localStorage before tracking so events are attributed.
         // identify() is async (AJAX) and may not have run yet on this page load,
-        // but bento_identity persists from previous sessions.
+        // but bento_identity persists from previous sessions. Always call it: the SDK
+        // only puts identity on events after identify() on this page, while getEmail()
+        // already returns the stored email, so a getEmail() guard skipped it.
         try {
             var storedEmail = localStorage.getItem('bento_identity');
-            if (storedEmail && !bento.getEmail()) {
+            if (storedEmail) {
                 bento.identify(storedEmail);
             }
         } catch (e) {}

@@ -4,6 +4,13 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.3.1] — 2026-10-30
+
+### Fixed
+- **Product-page `$view` reached Bento without the shopper's email** (so it never showed on their timeline, and browse flows never fired). On page load `product_tracking.phtml` only called `bento.identify()` when `bento.getEmail()` was empty, but `getEmail()` falls back to the stored `bento_identity`, while the SDK only attaches identity to events after `identify()` on the current page. It now always re-identifies from the stored email before tracking the view. No PHP, schema or config changes.
+
+---
+
 ## [2.3.0] — 2026-10-29
 
 Fields the WhatsApp layer needs (00g WhatsApp Build Spec §1–2): Bento hands WISMO the phone and, for a dismissed checkout, the pending order to make payable in WhatsApp; and WhatsApp reviews don't get a second `$review_submitted`.
