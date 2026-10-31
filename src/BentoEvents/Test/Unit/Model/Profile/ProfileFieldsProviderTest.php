@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace ArtLounge\BentoEvents\Test\Unit\Model\Profile;
 
 use ArtLounge\BentoCore\Api\ConfigInterface;
+use ArtLounge\BentoEvents\Model\Payload\SnapshotFields;
 use ArtLounge\BentoEvents\Model\Picks\NextPicks;
 use ArtLounge\BentoEvents\Model\Picks\NextPicksProvider;
+use ArtLounge\BentoEvents\Model\Pricing\Ladder;
 use ArtLounge\BentoEvents\Model\Profile\CategoryTree;
 use ArtLounge\BentoEvents\Model\Profile\ProfileFieldsProvider;
 use ArtLounge\BentoEvents\Model\Profile\ProfileLoader;
@@ -17,7 +19,7 @@ class ProfileFieldsProviderTest extends TestCase
 {
     private array $mediumsAsked = [];
 
-    private function provider(array $picks): ProfileFieldsProvider
+    private function provider(array $picks, array $ladderFields = []): ProfileFieldsProvider
     {
         $loader = $this->createMock(ProfileLoader::class);
         $loader->method('orders')->willReturn([]);
@@ -35,7 +37,10 @@ class ProfileFieldsProviderTest extends TestCase
             return $picks;
         });
 
-        return new ProfileFieldsProvider($loader, new StatsCalculator(), $config, $nextPicks, $this->createMock(\ArtLounge\BentoEvents\Model\Pricing\Ladder::class));
+        $ladder = $this->createMock(Ladder::class);
+        $ladder->method('profileFields')->willReturn($ladderFields);
+
+        return new ProfileFieldsProvider($loader, new StatsCalculator(), $config, $nextPicks, $ladder);
     }
 
     public function testPickFieldsAreAddedPerCustomerFromTheirPrimaryMedium(): void
@@ -54,5 +59,14 @@ class ProfileFieldsProviderTest extends TestCase
         $record = $this->provider([])->subscriberRecord('oil@x.com');
         $this->assertSame('oil', $record['primary_medium']);
         $this->assertSame([], preg_grep('/^next_pick_/', array_keys($record)));
+    }
+
+    public function testEmptyLadderFieldGoesOutAsClearSoItOverwritesYesterdaysValue(): void
+    {
+        $record = $this->provider([], ['ladder_line' => 'Spend more, save more.', 'free_ship_from_display' => ''])
+            ->subscriberRecord('oil@x.com');
+
+        $this->assertSame('Spend more, save more.', $record['ladder_line']);
+        $this->assertSame(SnapshotFields::CLEAR, $record['free_ship_from_display']);
     }
 }

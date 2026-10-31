@@ -7,10 +7,11 @@ namespace ArtLounge\BentoEvents\Cron;
 use ArtLounge\BentoCore\Api\ConfigInterface;
 use ArtLounge\BentoEvents\Model\Abandonment\ContactTimeoutProcessor;
 use ArtLounge\BentoEvents\Model\Abandonment\IdleCartProcessor;
+use ArtLounge\BentoEvents\Model\Abandonment\RecoveredCartProcessor;
 use Psr\Log\LoggerInterface;
 
 /**
- * artlounge_bento_abandonment — every 5 minutes: contact-capture timeouts, then idle carts.
+ * artlounge_bento_abandonment — every 5 minutes: contact-capture timeouts, idle carts, then carts paid under another email.
  */
 class Abandonment
 {
@@ -18,6 +19,7 @@ class Abandonment
         private readonly ConfigInterface $config,
         private readonly ContactTimeoutProcessor $contacts,
         private readonly IdleCartProcessor $carts,
+        private readonly RecoveredCartProcessor $recovered,
         private readonly LoggerInterface $logger
     ) {
     }
@@ -30,8 +32,9 @@ class Abandonment
         try {
             $c = $this->contacts->run();
             $q = $this->carts->run();
-            if ($c['enqueued'] + $c['cancelled'] + $q > 0) {
-                $this->logger->info('Bento abandonment run', $c + ['carts_queued' => $q]);
+            $r = $this->recovered->run();
+            if ($c['enqueued'] + $c['cancelled'] + $q + $r > 0) {
+                $this->logger->info('Bento abandonment run', $c + ['carts_queued' => $q, 'carts_recovered' => $r]);
             }
         } catch (\Throwable $e) {
             $this->logger->error('Bento abandonment run failed', ['error' => $e->getMessage()]);

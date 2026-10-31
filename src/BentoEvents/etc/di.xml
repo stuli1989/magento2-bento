@@ -39,6 +39,7 @@
                 <item name="checkout_started" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\CheckoutStartedBuilder</item>
                 <item name="checkout_abandoned" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\CheckoutAbandonedBuilder</item>
                 <item name="cart_abandoned" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\CartAbandonedBuilder</item>
+                <item name="cart_recovered" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\CartRecoveredBuilder</item>
                 <item name="subscribe" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\SubscribeBuilder</item>
                 <item name="unsubscribe" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\SubscribeBuilder</item>
                 <item name="account_created" xsi:type="object">ArtLounge\BentoEvents\Model\Payload\AccountCreatedBuilder</item>

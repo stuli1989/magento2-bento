@@ -8,6 +8,7 @@ use ArtLounge\BentoCore\Api\ConfigInterface;
 use ArtLounge\BentoEvents\Model\Abandonment\AbandonmentQueriesInterface;
 use ArtLounge\BentoEvents\Model\Abandonment\ContactTimeoutProcessor;
 use ArtLounge\BentoEvents\Model\Abandonment\IdleCartProcessor;
+use ArtLounge\BentoEvents\Model\Abandonment\RecoveredCartProcessor;
 use ArtLounge\BentoEvents\Model\Checkout\ContactStore;
 use ArtLounge\BentoEvents\Model\Outbox\Enqueuer;
 use ArtLounge\BentoEvents\Test\Unit\Fake\InMemoryOutboxStore;
@@ -130,5 +131,74 @@ class AbandonmentTest extends TestCase
             ->with($this->callback(fn ($idleBefore) => abs(strtotime($idleBefore . ' UTC') - (time() - 3600)) < 5), 500.0)
             ->willReturn([]);
         (new IdleCartProcessor($queries, $this->outbox, $this->enqueuer, $this->config, $this->createMock(LoggerInterface::class)))->run();
+    }
+
+    private function recovered(array $abandonRows, array $paidEmails): int
+    {
+        $queries = $this->createMock(AbandonmentQueriesInterface::class);
+        $queries->method('sentAbandonRows')->willReturn($abandonRows);
+        $queries->method('paidOrderEmails')->willReturnCallback(
+            fn (array $quoteIds) => array_intersect_key($paidEmails, array_flip($quoteIds))
+        );
+
+        return (new RecoveredCartProcessor($queries, $this->enqueuer))->run();
+    }
+
+    private function abandonRow(string $dedupKey, string $email): array
+    {
+        return ['email' => $email, 'store_id' => 1, 'dedup_key' => $dedupKey];
+    }
+
+    public function testPaidUnderAnotherEmailTellsTheOlderEmailOnce(): void
+    {
+        $rows = [$this->abandonRow('cart_abandoned:9001:1761000000', 'a@x.com')];
+
+        $this->assertSame(1, $this->recovered($rows, [9001 => ['b@y.com']]));
+        $this->assertSame(0, $this->recovered($rows, [9001 => ['b@y.com']]), 'the next cron run adds nothing');
+
+        $this->assertCount(1, $this->outbox->rows);
+        $row = $this->outbox->rows[1];
+        $this->assertSame('cart_recovered', $row['event_type']);
+        $this->assertSame('quote', $row['entity_type']);
+        $this->assertSame(9001, $row['entity_id']);
+        $this->assertSame('a@x.com', $row['email']);
+        $this->assertSame('cart_recovered:9001:a@x.com', $row['dedup_key']);
+    }
+
+    public function testCheckoutRowsMatchOnTheQuoteInTheirKeyForBothSources(): void
+    {
+        // Contact rows hold the contact id and dismissed rows the order id; the key always holds the quote.
+        $this->recovered([
+            $this->abandonRow('checkout_abandoned:9001:order_A1', 'a@x.com'),
+            $this->abandonRow('checkout_abandoned:9002:order_B1', 'c@x.com'),
+        ], [9001 => ['b@y.com'], 9002 => ['d@y.com']]);
+
+        $this->assertSame(
+            ['cart_recovered:9001:a@x.com', 'cart_recovered:9002:c@x.com'],
+            array_values(array_map(fn ($r) => $r['dedup_key'], $this->outbox->rows))
+        );
+    }
+
+    public function testSameBuyerEmailIsLeftToThePurchaseItself(): void
+    {
+        $this->assertSame(0, $this->recovered(
+            [$this->abandonRow('cart_abandoned:9001:1761000000', 'a@x.com')],
+            [9001 => [' A@X.com ', 'b@y.com']]
+        ));
+        $this->assertSame([], $this->outbox->rows);
+    }
+
+    public function testUnpaidCartSendsNothing(): void
+    {
+        $this->assertSame(0, $this->recovered([$this->abandonRow('cart_abandoned:9001:1761000000', 'a@x.com')], []));
+    }
+
+    public function testOnlyTheNewestCartPerEmailCounts(): void
+    {
+        // a@x.com abandoned a newer cart after the order: that run is genuine and must not be ended.
+        $this->assertSame(0, $this->recovered([
+            $this->abandonRow('cart_abandoned:9002:1761100000', 'a@x.com'),
+            $this->abandonRow('cart_abandoned:9001:1761000000', 'a@x.com'),
+        ], [9001 => ['b@y.com']]));
     }
 }

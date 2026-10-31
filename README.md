@@ -25,6 +25,7 @@ cron artlounge_bento_outbox_send (every minute, DB lock, ≤100 rows, ≤30 s)
 | `$checkout_started` | server | Magic Checkout popup opened by a logged-in customer (once per quote) |
 | `$checkout_abandoned` | server | popup dismissed (Razorpay `pending_payment` order) or contact captured and no payment within the delay; same coupon gate as `$cart_abandoned`, reusing the quote's code if it already has one; `details.phone` (E.164 or null) and, dismissed only, `details.order_increment_id` of that pending order |
 | `$cart_abandoned` | server cron | identified cart idle ≥ delay, ≥ min value; `coupon_eligible` + coupon only above the threshold; `details.phone` (E.164 or null) |
+| `$cart_recovered` | server cron | an abandoned cart was paid for under a different email: sent to the abandoned email, `details.quote_id` |
 | `$purchase` | server | order first reaches processing/complete (COD or captured prepaid); `unique.key` = increment id |
 | `$OrderCanceled` | server | order canceled after a `$purchase` |
 | `$OrderRefunded` | server | credit memo |

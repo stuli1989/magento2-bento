@@ -24,6 +24,9 @@ use ArtLounge\BentoEvents\Model\Pricing\Ladder;
 
 class CartAbandonedBuilder implements BuilderInterface
 {
+    /** The quote is active with no items left. OpenCartRefresh acts on this reason. */
+    public const SKIP_EMPTY = 'cart is empty';
+
     public function __construct(
         private readonly QuoteSnapshotLoader $quotes,
         private readonly QuotePayloadMapper $mapper,
@@ -44,8 +47,11 @@ class CartAbandonedBuilder implements BuilderInterface
         if (!empty($quote['has_order'])) {
             return BuildResult::skip('converted to an order');
         }
-        if (empty($quote['is_active']) || (int)$quote['items_count'] < 1) {
-            return BuildResult::skip('cart no longer active or empty');
+        if (empty($quote['is_active'])) {
+            return BuildResult::skip('cart no longer active');
+        }
+        if ((int)$quote['items_count'] < 1) {
+            return BuildResult::skip(self::SKIP_EMPTY);
         }
 
         if (empty($quote['phone']) && !empty($quote['customer_id'])) {

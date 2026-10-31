@@ -208,9 +208,21 @@ class QuoteBuildersTest extends TestCase
             null
         );
         $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
+        $reasons = [];
         for ($i = 0; $i < 4; $i++) {
-            $this->assertTrue($b->build($this->row('cart_abandoned', 'quote', 9001))->isSkip());
+            $reasons[] = $b->build($this->row('cart_abandoned', 'quote', 9001))->skipReason;
         }
+        $this->assertSame(
+            ['converted to an order', CartAbandonedBuilder::SKIP_EMPTY, 'cart no longer active', 'quote 9001 not found'],
+            $reasons
+        );
+    }
+
+    public function testInactiveEmptyCartIsNotReportedAsEmptied(): void
+    {
+        $this->quotes->method('load')->willReturn($this->quote(['is_active' => false, 'items_count' => 0]));
+        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
+        $this->assertSame('cart no longer active', $b->build($this->row('cart_abandoned', 'quote', 9001))->skipReason);
     }
 
     public function testCartAbandonedWritesTheCartSnapshotAndCouponFieldsOntoTheSubscriber(): void

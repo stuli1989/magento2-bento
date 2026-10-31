@@ -14,4 +14,16 @@ interface AbandonmentQueriesInterface
      * @return array<int, array{quote_id:int, email:string, store_id:int, updated_at:string}>
      */
     public function idleCarts(string $idleBeforeUtc, float $minValue, int $limit = 500): array;
+
+    /**
+     * Sent $cart_abandoned / $checkout_abandoned rows created since $sinceUtc, newest first.
+     * @return array<int, array{email:string, store_id:int, dedup_key:string}>
+     */
+    public function sentAbandonRows(string $sinceUtc): array;
+
+    /**
+     * @param int[] $quoteIds
+     * @return array<int, string[]> quote id => customer_email of each order on it that was paid at some point
+     */
+    public function paidOrderEmails(array $quoteIds): array;
 }

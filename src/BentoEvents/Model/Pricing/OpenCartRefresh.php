@@ -3,8 +3,14 @@
  * Nightly: re-push the cart snapshot fields of carts abandoned in the last WINDOW_DAYS, so a ladder change,
  * a sale starting or a coupon being held back reaches the cart emails still to come (CA-03/03C go out ~72 h
  * after the abandon). Rebuilds each email's newest sent $cart_abandoned / $checkout_abandoned row with its own
- * builder and sends only the fields (/batch/subscribers), never a new event. Carts since converted or emptied
- * are skipped by the builders. Obeys the test-mode allow-list.
+ * builder and sends only the fields (/batch/subscribers), never a new event. Carts since converted are skipped by
+ * the builders. A cart emptied since depends on the row:
+ *  - cart_abandoned, quote active, no items, no order: sends only last_cart_item_count "0", so the flows' "still in?"
+ *    splits can stop its emails. The number overwrites only that field, and refilling the cart rebuilds them all.
+ *  - cart_abandoned on a quote with any order, even a dismissed pending_payment one: skipped as converted, nothing sent.
+ *  - checkout_abandoned, contact: unchanged, the full snapshot with integer 0 and a zero subtotal.
+ *  - checkout_abandoned, dismissed: rebuilt from the order, so the items and count stay as they were.
+ * Obeys the test-mode allow-list.
  * ponytail: the discount is the quote's stored total (as of the customer's last cart visit); opening the cart recollects it.
  */
 
@@ -16,6 +22,7 @@ use ArtLounge\BentoCore\Api\BentoClientInterface;
 use ArtLounge\BentoCore\Api\ConfigInterface;
 use ArtLounge\BentoEvents\Model\Outbox\OutboxRow;
 use ArtLounge\BentoEvents\Model\Payload\BuilderPool;
+use ArtLounge\BentoEvents\Model\Payload\CartAbandonedBuilder;
 use Magento\Framework\App\ResourceConnection;
 
 class OpenCartRefresh
@@ -51,6 +58,10 @@ class OpenCartRefresh
                 continue; // newest cart per email only
             }
             $result = $this->builders->get($row->eventType)?->build($row);
+            if ($result?->skipReason === CartAbandonedBuilder::SKIP_EMPTY) {
+                $records[$row->email] = ['email' => $row->email, 'last_cart_item_count' => '0'];
+                continue;
+            }
             if ($result === null || $result->isSkip() || empty($result->event['fields'])) {
                 $skipped++;
                 continue;

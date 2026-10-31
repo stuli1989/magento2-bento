@@ -4,6 +4,22 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.3.6] — 2026-11-01
+
+### Added
+- **`$cart_recovered`, for a cart paid for under another email.** Magic Checkout can leave Razorpay's saved contact on the quote, so the order lands on b@y.com while a@x.com, who abandoned the cart, stays in the cart flows and gets the coupon after buying. The 5-minute abandonment cron now sends `$cart_recovered` to a@x.com, once per quote, when that email's newest abandon row in the last 4 days is on a quote paid under other emails only. Bento needs a flow on this event that removes `in-cart-abandonment` and `in-checkout-abandonment`; without it the event does nothing. Nothing changes in the order save or checkout.
+
+### Fixed
+- **An emptied cart on a `$cart_abandoned` row is now visible to Bento.** The hourly refresh skipped a cart emptied after the abandon and wrote nothing, so the emails went on saying it was saved. For a `$cart_abandoned` row on an active quote with no items and no order, it now sends `last_cart_item_count` `"0"` and nothing else. An inactive quote is left alone. Refilling the cart rewrites the fields on the next refresh. No code changed for the other cases, and two of them still report the old cart:
+  - A `$cart_abandoned` row on a quote with any order, even a dismissed `pending_payment` one, is still skipped as converted, so no `"0"` goes out.
+  - A dismissed `$checkout_abandoned` row rebuilds from the order, so its items and count stay as they were. Even with the count check in the splits, CO-02 and CO-03C still send for that cart.
+  - A contact `$checkout_abandoned` row, as before, sends the full snapshot with count `0` and subtotal ₹0.00.
+
+  This stops no mail on its own. The "still in?" splits have to check the count, and they should go in before, or with, this deploy and the pending template fixes, which drop the item table at count 0 but keep "still saved" and the button.
+- **Profile pushes clear an empty ladder field.** `ProfileFieldsProvider` sent `''` for `free_ship_from_display` and `ladder_line`, which Bento ignores, so a stale "ships free" line could stay on subscribers refreshed only by profile pushes. They now go out as `SnapshotFields::CLEAR`.
+
+---
+
 ## [2.3.5] — 2026-10-31
 
 ### Fixed

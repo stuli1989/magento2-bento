@@ -13,6 +13,7 @@ namespace ArtLounge\BentoEvents\Model\Profile;
 
 use ArtLounge\BentoCore\Api\ConfigInterface;
 use ArtLounge\BentoEvents\Model\Payload\Phone;
+use ArtLounge\BentoEvents\Model\Payload\SnapshotFields;
 use ArtLounge\BentoEvents\Model\Picks\NextPicksProvider;
 use ArtLounge\BentoEvents\Model\Pricing\Ladder;
 
@@ -70,12 +71,15 @@ class ProfileFieldsProvider
             // Never send nulls (they would blank existing Bento values).
             $out[$email] = array_filter($record, static fn ($v) => $v !== null);
         }
-        // List fields keep '' on purpose: an empty slot must clear an older entry.
+        // NextPicks sends an empty slot as CLEAR, so an older, longer list never shows through.
         foreach ($this->picks->fieldsFor(array_map(static fn ($r) => $r['primary_medium'] ?? null, $out)) as $email => $fields) {
             $out[$email] += $fields;
         }
-        // '' kept too: an empty ladder (all tiers off) must clear yesterday's sentence.
-        $ladder = $this->ladder->profileFields(0);
+        // Bento ignores '' on update, so an empty ladder value goes out as CLEAR or yesterday's sentence would stay.
+        $ladder = array_map(
+            static fn ($v) => $v === '' ? SnapshotFields::CLEAR : $v,
+            $this->ladder->profileFields(0)
+        );
         foreach ($out as $email => $record) {
             $out[$email] = $record + $ladder;
         }

@@ -12,6 +12,7 @@ use ArtLounge\BentoEvents\Model\Outbox\OutboxRow;
 use ArtLounge\BentoEvents\Model\Payload\BuilderInterface;
 use ArtLounge\BentoEvents\Model\Payload\BuilderPool;
 use ArtLounge\BentoEvents\Model\Payload\BuildResult;
+use ArtLounge\BentoEvents\Model\Payload\CartAbandonedBuilder;
 use ArtLounge\BentoEvents\Model\Pricing\OpenCartRefresh;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\DB\Adapter\AdapterInterface;
@@ -57,6 +58,41 @@ class OpenCartRefreshTest extends TestCase
         $report = (new OpenCartRefresh($resource, $pool, $client, $config))->run();
 
         $this->assertSame([['email' => 'a@x.com', 'last_cart_next_label' => 'from 30']], $sent);
+        $this->assertSame(['carts' => 1, 'sent' => 1, 'skipped' => 1, 'error' => null], $report);
+    }
+
+    public function testEmptiedCartSendsOnlyAZeroCountAndHidesOlderCarts(): void
+    {
+        $conn = $this->createMock(AdapterInterface::class);
+        $conn->method('select')->willReturn(new Select());
+        $conn->method('fetchAll')->willReturn([ // id DESC
+            $this->row(30, 'cart_abandoned', 'a@x.com'),    // emptied
+            $this->row(20, 'cart_abandoned', 'a@x.com'),    // older cart, same person: must not come back
+            $this->row(10, 'cart_abandoned', 'gone@x.com'), // inactive, not emptied: left alone
+        ]);
+        $resource = $this->createMock(ResourceConnection::class);
+        $resource->method('getConnection')->willReturn($conn);
+
+        $builder = $this->createMock(BuilderInterface::class);
+        $builder->method('build')->willReturnCallback(fn (OutboxRow $r) => match ($r->id) {
+            30 => BuildResult::skip(CartAbandonedBuilder::SKIP_EMPTY),
+            10 => BuildResult::skip('cart no longer active'),
+            default => BuildResult::event(['type' => '$x', 'email' => $r->email, 'fields' => ['last_cart_item_count' => 2]]),
+        });
+
+        $sent = [];
+        $client = $this->createMock(BentoClientInterface::class);
+        $client->expects($this->never())->method('postEvents');
+        $client->method('importSubscribers')->willReturnCallback(function (array $records) use (&$sent) {
+            $sent = $records;
+            return new SendResult(200, '{}', null);
+        });
+        $config = $this->createMock(ConfigInterface::class);
+        $config->method('getTestMode')->willReturn(new TestMode([]));
+
+        $report = (new OpenCartRefresh($resource, new BuilderPool(['cart_abandoned' => $builder]), $client, $config))->run();
+
+        $this->assertSame([['email' => 'a@x.com', 'last_cart_item_count' => '0']], $sent);
         $this->assertSame(['carts' => 1, 'sent' => 1, 'skipped' => 1, 'error' => null], $report);
     }
 }

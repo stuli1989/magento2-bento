@@ -55,4 +55,41 @@ class AbandonmentQueries implements AbandonmentQueriesInterface
             'updated_at' => (string)$r['updated_at'],
         ], $rows);
     }
+
+    public function sentAbandonRows(string $sinceUtc): array
+    {
+        $c = $this->resource->getConnection();
+        $rows = $c->fetchAll(
+            $c->select()->from($this->resource->getTableName('artlounge_bento_outbox'), ['email', 'store_id', 'dedup_key'])
+                ->where('event_type IN (?)', ['cart_abandoned', 'checkout_abandoned'])
+                ->where('status = ?', 'sent')
+                ->where('created_at >= ?', $sinceUtc)
+                ->order('id DESC')
+        );
+
+        return array_map(static fn ($r) => [
+            'email' => (string)$r['email'],
+            'store_id' => (int)$r['store_id'],
+            'dedup_key' => (string)$r['dedup_key'],
+        ], $rows);
+    }
+
+    public function paidOrderEmails(array $quoteIds): array
+    {
+        if ($quoteIds === []) {
+            return [];
+        }
+        $c = $this->resource->getConnection();
+        $rows = $c->fetchAll(
+            $c->select()->from($this->resource->getTableName('sales_order'), ['quote_id', 'customer_email'])
+                ->where('quote_id IN (?)', $quoteIds)
+                ->where('state IN (?)', PurchaseDetector::EVER_PAID_STATES)
+        );
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(int)$r['quote_id']][] = (string)$r['customer_email'];
+        }
+
+        return $out;
+    }
 }
