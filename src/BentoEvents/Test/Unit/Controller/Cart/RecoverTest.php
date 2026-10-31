@@ -104,7 +104,7 @@ class RecoverTest extends TestCase
         $this->createRecoverController($mocks)->execute();
     }
 
-    public function testExecuteRejectsEmailMismatch(): void
+    public function testExecuteRestoresGuestCartWhenMagicCheckoutChangedItsEmail(): void
     {
         $mocks = $this->createRecoverMocks();
         $this->mockRequestParams($mocks['request'], ['recover' => 'signed-token']);
@@ -115,10 +115,15 @@ class RecoverTest extends TestCase
         ]);
 
         $quote = $this->createMock(CartInterface::class);
-        $quote->method('getCustomerEmail')->willReturn('other@example.com');
+        $quote->method('getCustomerEmail')->willReturn('razorpay-contact@example.com');
+        $quote->method('getIsActive')->willReturn(true);
+        $quote->method('getItemsCount')->willReturn(1);
+        $quote->method('getCustomerId')->willReturn(null);
         $quote->method('getStoreId')->willReturn(1);
         $mocks['cartRepository']->method('get')->with(10)->willReturn($quote);
-        $mocks['messageManager']->expects($this->once())->method('addErrorMessage');
+        $mocks['messageManager']->expects($this->never())->method('addErrorMessage');
+        $mocks['checkoutSession']->expects($this->once())->method('setQuoteId')->with(10);
+        $mocks['redirect']->expects($this->once())->method('setPath')->with('checkout/cart', $this->anything())->willReturn($mocks['redirect']);
 
         $controller = $this->createRecoverController($mocks);
         $controller->execute();
@@ -248,6 +253,17 @@ class RecoverTest extends TestCase
         $this->createRecoverController($mocks)->execute();
     }
 
+    public function testLinkSentToAnotherAddressDoesNotLogAnyoneIn(): void
+    {
+        [$mocks] = $this->loggedOutCustomerCart('someone-else@example.com');
+
+        $mocks['customerSession']->expects($this->never())->method('setCustomerDataAsLoggedIn');
+        $mocks['checkoutSession']->expects($this->never())->method('setQuoteId');
+        $mocks['redirect']->expects($this->once())->method('setPath')->with('customer/account/login')->willReturn($mocks['redirect']);
+
+        $this->createRecoverController($mocks)->execute();
+    }
+
     public function testLockedAccountStillGoesToTheLoginPage(): void
     {
         [$mocks] = $this->loggedOutCustomerCart();
@@ -261,7 +277,7 @@ class RecoverTest extends TestCase
     }
 
     /** @return array{0: array, 1: CustomerInterface} */
-    private function loggedOutCustomerCart(): array
+    private function loggedOutCustomerCart(string $accountEmail = 'Test@Example.com'): array
     {
         $mocks = $this->createRecoverMocks();
         $this->mockRequestParams($mocks['request'], ['recover' => 'signed-token']);
@@ -275,6 +291,7 @@ class RecoverTest extends TestCase
         $mocks['cartRepository']->method('get')->willReturn($quote);
         $mocks['customerSession']->method('isLoggedIn')->willReturn(false);
         $customer = $this->createMock(CustomerInterface::class);
+        $customer->method('getEmail')->willReturn($accountEmail);
         $mocks['customerRepository']->method('getById')->with(7)->willReturn($customer);
         return [$mocks, $customer];
     }

@@ -79,12 +79,9 @@ class Recover implements HttpGetActionInterface
                 throw new \InvalidArgumentException('Quote does not belong to this store');
             }
 
-            // Validate email matches. A guest quote may have no email yet (contact captured in the
-            // Magic Checkout popup only) — then the signed token alone is the proof.
-            $quoteEmail = strtolower(trim((string)$quote->getCustomerEmail()));
-            if ($quoteEmail !== '' && $quoteEmail !== strtolower($email)) {
-                throw new \InvalidArgumentException('Token email mismatch');
-            }
+            // The signature ties this link to this quote, so the quote's email isn't compared: opening
+            // Magic Checkout turns a customer's quote into a guest one and can leave Razorpay's saved
+            // contact on it, which would kill the link for exactly the shoppers it was sent to.
 
             // Check quote is still active
             if (!$quote->getIsActive()) {
@@ -113,7 +110,7 @@ class Recover implements HttpGetActionInterface
                 // The signed link was emailed to this customer, the same proof the storefront's own
                 // email sign-in accepts, so a logged-out customer goes straight to their cart.
                 if ($isSameCustomerLoggedIn
-                    || (!$this->customerSession->isLoggedIn() && $quoteEmail !== '' && $this->signIn((int)$quote->getCustomerId()))) {
+                    || (!$this->customerSession->isLoggedIn() && $this->signIn((int)$quote->getCustomerId(), $email))) {
                     $this->checkoutSession->setQuoteId($quoteId);
                     $this->messageManager->addSuccessMessage(
                         __('Your cart has been restored.')
@@ -195,14 +192,17 @@ class Recover implements HttpGetActionInterface
     }
 
     /**
-     * Log the customer in as core's LoginPost does: refuse an unconfirmed or locked account, then
-     * drop mage-cache-sessid so customer-data.js forgets the guest's cached sections.
+     * Log the customer in as core's LoginPost does: refuse a link sent to another address or an
+     * unconfirmed or locked account, then drop mage-cache-sessid so customer-data.js forgets the
+     * guest's cached sections.
      */
-    private function signIn(int $customerId): bool
+    private function signIn(int $customerId, string $email): bool
     {
         try {
             $customer = $this->customerRepository->getById($customerId);
-            if ($customer->getConfirmation() || $this->authentication->isLocked($customerId)) {
+            if (strtolower((string)$customer->getEmail()) !== $email
+                || $customer->getConfirmation()
+                || $this->authentication->isLocked($customerId)) {
                 return false;
             }
             $this->customerSession->setCustomerDataAsLoggedIn($customer);
