@@ -4,7 +4,7 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
-## [2.3.3] — 2026-10-31
+## [2.3.4] — 2026-10-31
 
 ### Fixed
 - **Recovery links survive Magic Checkout.** Opening the popup turns a logged-in customer's quote into a guest quote and can leave Razorpay's saved contact as its email, so the old quote-email check answered "invalid or has expired" for exactly the shoppers the link was sent to. The signature is the proof now, so the link restores the cart whatever email is on the quote. Sign-in needs the token's email to equal the customer's account email.
