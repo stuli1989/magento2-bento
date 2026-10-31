@@ -45,7 +45,7 @@ class ProfileFieldsProviderTest extends TestCase
 
         $this->assertSame(['oil@x.com' => 'oil', 'new@x.com' => null], $this->mediumsAsked);
         $this->assertSame('Liquin', $records['oil@x.com']['next_pick_1_name']);
-        $this->assertSame('', $records['oil@x.com']['next_pick_3_url'], 'blank slots are sent so they clear older picks');
+        $this->assertSame(' ', $records['oil@x.com']['next_pick_3_url'], 'blank slots are sent so they clear older picks');
         $this->assertArrayNotHasKey('next_pick_1_name', $records['new@x.com']);
     }
 

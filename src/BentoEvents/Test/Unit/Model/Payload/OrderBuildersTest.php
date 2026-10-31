@@ -108,8 +108,8 @@ class OrderBuildersTest extends TestCase
         $this->assertSame('https://x/cotman', $f['last_order_item_1_url']);
         $this->assertSame('https://x/m.jpg', $f['last_order_item_1_image_url']);
         $this->assertSame('Round Brush 6', $f['last_order_item_2_name']);
-        $this->assertSame('', $f['last_order_item_2_image_url']);
-        $this->assertSame('', $f['last_order_item_5_name']);
+        $this->assertSame(' ', $f['last_order_item_2_image_url']);
+        $this->assertSame(' ', $f['last_order_item_5_name']);
         $this->assertSame(2, $f['last_order_item_count']);
         $this->assertSame('Kshitij', $f['first_name']);
     }

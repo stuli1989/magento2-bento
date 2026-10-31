@@ -57,7 +57,7 @@ class NextPicksTest extends TestCase
         $this->assertSame('Nib', $f['next_pick_1_name']);
         foreach ([2, 3] as $n) {
             foreach (['name', 'url', 'image_url'] as $k) {
-                $this->assertSame('', $f["next_pick_{$n}_{$k}"]);
+                $this->assertSame(' ', $f["next_pick_{$n}_{$k}"]);
             }
         }
     }
@@ -79,7 +79,7 @@ class NextPicksTest extends TestCase
         ];
         $f = NextPicks::fields([7, 3], $products);
         $this->assertSame(['Liquin', 'https://s/liquin', 'https://m/l.jpg'], [$f['next_pick_1_name'], $f['next_pick_1_url'], $f['next_pick_1_image_url']]);
-        $this->assertSame(['Gamvar', 'https://s/gamvar', ''], [$f['next_pick_2_name'], $f['next_pick_2_url'], $f['next_pick_2_image_url']]);
+        $this->assertSame(['Gamvar', 'https://s/gamvar', ' '], [$f['next_pick_2_name'], $f['next_pick_2_url'], $f['next_pick_2_image_url']]);
     }
 
     public function testConfigurableIsShownAsItsBestSellingInStockVariant(): void
@@ -241,7 +241,7 @@ class NextPicksTest extends TestCase
                 "{$prefix}2_name", "{$prefix}2_url", "{$prefix}2_image_url",
                 "{$prefix}3_name", "{$prefix}3_url", "{$prefix}3_image_url",
             ], array_keys($f));
-            $this->assertSame(['A', '', ''], [$f["{$prefix}1_name"], $f["{$prefix}2_name"], $f["{$prefix}3_name"]], 'blanks when fewer than 3');
+            $this->assertSame(['A', ' ', ' '], [$f["{$prefix}1_name"], $f["{$prefix}2_name"], $f["{$prefix}3_name"]], 'blanks when fewer than 3');
         }
     }
 

@@ -7,7 +7,7 @@
  * `fields` (applied to the subscriber with the event), replacing the per-slot "Update Field" nodes
  * the flows used to need.
  *
- * Always exactly SLOTS slots: unused slots are sent as '' so a shorter cart never shows lines left over
+ * Always exactly SLOTS slots: unused slots are sent as CLEAR so a shorter cart never shows lines left over
  * from an older one. Templates show 1–5 lines, or lines 1–4 + "+ N more" when *_item_count > 5.
  */
 
@@ -20,6 +20,8 @@ use ArtLounge\BentoCore\Model\Money;
 final class SnapshotFields
 {
     public const SLOTS = 5;
+    /** Bento keeps the old value when a field is sent as '' or null. A space replaces it and Liquid reads it as blank. */
+    public const CLEAR = ' ';
 
     /**
      * $cart_abandoned / $checkout_abandoned.

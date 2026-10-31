@@ -227,8 +227,8 @@ class QuoteBuildersTest extends TestCase
         $this->assertSame('₹1,000.00', $f['last_cart_item_1_price_display']);
         $this->assertSame('https://x/cotman', $f['last_cart_item_1_url']);
         $this->assertSame('https://x/m.jpg', $f['last_cart_item_1_image_url']);
-        $this->assertSame('', $f['last_cart_item_2_url']);
-        $this->assertSame('', $f['last_cart_item_3_name']);
+        $this->assertSame(' ', $f['last_cart_item_2_url']);
+        $this->assertSame(' ', $f['last_cart_item_3_name']);
         $this->assertSame(2, $f['last_cart_item_count']);
         $this->assertSame(250000, $f['last_cart_subtotal']);
         $this->assertSame('₹2,500.00', $f['last_cart_subtotal_display']);
@@ -247,8 +247,8 @@ class QuoteBuildersTest extends TestCase
         $f = $b->build($this->row('cart_abandoned', 'quote', 9001))->event['fields'];
 
         $this->assertSame('no', $f['last_cart_coupon_eligible']);
-        $this->assertSame('', $f['last_cart_coupon_code']);
-        $this->assertSame('', $f['last_cart_coupon_url']);
+        $this->assertSame(' ', $f['last_cart_coupon_code']);
+        $this->assertSame(' ', $f['last_cart_coupon_url']);
     }
 
     public function testCheckoutAbandonedWritesTheCartSnapshotAndBlanksCouponFieldsWhenNotEligible(): void
@@ -264,7 +264,7 @@ class QuoteBuildersTest extends TestCase
         $this->assertSame(140000, $f['last_cart_subtotal']);
         $this->assertSame('https://local/bento/cart/recover/recover/TOKEN', $f['last_cart_recovery_url']);
         $this->assertSame('no', $f['last_cart_coupon_eligible']);
-        $this->assertSame('', $f['last_cart_coupon_code'], 'an earlier cart\'s coupon must not resurface');
+        $this->assertSame(' ', $f['last_cart_coupon_code'], 'an earlier cart\'s coupon must not resurface');
     }
 
     public function testCheckoutStartedDoesNotOverwriteTheCartSnapshot(): void
@@ -359,6 +359,6 @@ class QuoteBuildersTest extends TestCase
         $this->assertSame('₹1,549', $f['last_cart_next_gap_display']);
         $this->assertSame('7.5% off', $f['last_cart_next_label']);
         $this->assertSame(LadderTest::LIVE_LINE, $f['ladder_line']);
-        $this->assertSame('', $f['last_cart_coupon_value_display']);
+        $this->assertSame(' ', $f['last_cart_coupon_value_display']);
     }
 }

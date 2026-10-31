@@ -15,6 +15,8 @@ declare(strict_types=1);
 
 namespace ArtLounge\BentoEvents\Model\Picks;
 
+use ArtLounge\BentoEvents\Model\Payload\SnapshotFields;
+
 final class NextPicks
 {
     public const SLOTS = 3;
@@ -278,7 +280,7 @@ final class NextPicks
     }
 
     /**
-     * {prefix}{1..3}_{name,url,image_url}; unused slots are '' so an older, longer list never shows through.
+     * {prefix}{1..3}_{name,url,image_url}; unused slots are CLEAR so an older, longer list never shows through.
      *
      * @param int[] $ids chosen parent ids
      * @param array<int,array{name:?string,url:?string,image:?string}> $products CatalogLookup / display() rows
@@ -290,9 +292,9 @@ final class NextPicks
         $ids = array_values($ids);
         for ($n = 1; $n <= self::SLOTS; $n++) {
             $p = $products[$ids[$n - 1] ?? 0] ?? [];
-            $fields[$prefix . $n . '_name'] = (string)($p['name'] ?? '');
-            $fields[$prefix . $n . '_url'] = (string)($p['url'] ?? '');
-            $fields[$prefix . $n . '_image_url'] = (string)($p['image'] ?? '');
+            $fields[$prefix . $n . '_name'] = (string)($p['name'] ?? '') ?: SnapshotFields::CLEAR;
+            $fields[$prefix . $n . '_url'] = (string)($p['url'] ?? '') ?: SnapshotFields::CLEAR;
+            $fields[$prefix . $n . '_image_url'] = (string)($p['image'] ?? '') ?: SnapshotFields::CLEAR;
         }
 
         return $fields;

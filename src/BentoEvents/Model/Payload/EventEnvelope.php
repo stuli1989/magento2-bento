@@ -7,8 +7,8 @@
  * the same formatter used for last_purchase_date, so Bento flow exits can compare them lexically.
  *
  * $fields (profile: name, phone…) drop null AND '' so they never blank a value Bento already has.
- * $snapshotFields (SnapshotFields: last_cart_item_*, last_order_item_*) keep '' on purpose — a blank
- * slot must overwrite the line an older, longer cart left behind.
+ * $snapshotFields (SnapshotFields: last_cart_item_*, last_order_item_*) must overwrite what an older
+ * cart left behind, and Bento ignores '' and null on update, so '' goes out as SnapshotFields::CLEAR.
  */
 
 declare(strict_types=1);
@@ -39,7 +39,10 @@ class EventEnvelope
 
         $event = ['type' => $type, 'email' => $row->email];
         $fields = array_filter($fields, static fn ($v) => $v !== null && $v !== '')
-            + array_filter($snapshotFields, static fn ($v) => $v !== null);
+            + array_map(
+                static fn ($v) => $v === '' ? SnapshotFields::CLEAR : $v,
+                array_filter($snapshotFields, static fn ($v) => $v !== null)
+            );
         if ($fields) {
             $event['fields'] = $fields;
         }

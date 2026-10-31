@@ -4,6 +4,13 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.3.5] — 2026-10-31
+
+### Fixed
+- **Old cart values no longer survive on the subscriber.** Bento ignores `''` and `null` when updating a field, so anything a newer cart left blank kept the old value: a shorter cart showed the older cart's lines, and a cart past the top step still said "Add ₹79 more". Snapshot and pick slots now go out as a single space (`SnapshotFields::CLEAR`), which Bento stores and Liquid reads as blank.
+
+---
+
 ## [2.3.4] — 2026-10-31
 
 ### Fixed
