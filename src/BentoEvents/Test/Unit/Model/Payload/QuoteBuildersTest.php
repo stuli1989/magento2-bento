@@ -386,6 +386,7 @@ class QuoteBuildersTest extends TestCase
 
     public function testDismissedCheckoutWithoutAnAddressPhoneFallsBackToTheCustomer(): void
     {
+        $this->customers->method('ownsPhone')->willReturn(true);
         $this->orders->method('load')->willReturn(Fixtures::order(['state' => 'pending_payment', 'phone' => null, 'customer_id' => 77]));
         $this->customers->method('defaultPhone')->with(77)->willReturn('098200 55555');
         $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),

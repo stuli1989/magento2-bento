@@ -4,6 +4,13 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.3.8] — 2026-11-02
+
+### Fixed
+- Test only: v2.3.7 was tagged with one unit test stubbing the wrong phone answer. No shipped behaviour changes from 2.3.7.
+
+---
+
 ## [2.3.7] — 2026-11-02
 
 ### Fixed
