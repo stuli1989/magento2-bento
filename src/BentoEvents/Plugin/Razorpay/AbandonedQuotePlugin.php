@@ -49,11 +49,13 @@ class AbandonedQuotePlugin
             if ($order === null || $order['state'] !== 'pending_payment') {
                 return $result;
             }
+            // Logged in: the account, not the contact Razorpay saved against the phone. The recovery link can
+            // then sign them in, and the mail reaches the profile holding their history.
             $this->enqueuer->enqueue(
                 'checkout_abandoned',
                 'order',
                 (int)$order['order_id'],
-                (string)$order['email'],
+                $this->context->loggedInEmail() ?: (string)$order['email'],
                 (int)$order['store_id'],
                 self::dedupKey((int)$order['quote_id'], $rzpOrderId),
                 ['source' => 'dismissed', 'rzp_order_id' => $rzpOrderId, 'quote_id' => (int)$order['quote_id']]

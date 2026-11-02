@@ -20,12 +20,12 @@ class AbandonmentQueries implements AbandonmentQueriesInterface
         return (bool)$c->fetchOne(
             $c->select()->from($this->resource->getTableName('sales_order'), ['entity_id'])
                 ->where('quote_id = ?', $quoteId)
-                ->where('state IN (?)', PurchaseDetector::EVER_PAID_STATES)
+                ->where("state IN (?) OR (state = 'new' AND status = 'processing')", PurchaseDetector::EVER_PAID_STATES)
                 ->limit(1)
         );
     }
 
-    public function idleCarts(string $idleBeforeUtc, float $minValue, int $limit = 500): array
+    public function idleCarts(string $idleBeforeUtc, float $minValue, int $limit = 5000): array
     {
         $c = $this->resource->getConnection();
         $rows = $c->fetchAll(
@@ -83,7 +83,7 @@ class AbandonmentQueries implements AbandonmentQueriesInterface
         $rows = $c->fetchAll(
             $c->select()->from($this->resource->getTableName('sales_order'), ['quote_id', 'customer_email'])
                 ->where('quote_id IN (?)', $quoteIds)
-                ->where('state IN (?)', PurchaseDetector::EVER_PAID_STATES)
+                ->where("state IN (?) OR (state = 'new' AND status = 'processing')", PurchaseDetector::EVER_PAID_STATES)
         );
         $out = [];
         foreach ($rows as $r) {

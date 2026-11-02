@@ -2,9 +2,9 @@
 /**
  * Decides $purchase / $OrderCanceled from an order's current state — no origData needed.
  *
- * - processing|complete, created ≤ 7 days ago, first time we see it (marker INSERT succeeds) → purchase
- *   (COD goes straight to processing; prepaid reaches processing on capture; a dismissed
- *   pending_payment order paid later also lands here exactly once)
+ * - processing|complete, or new with status processing, created ≤ 7 days ago, first time we see it (marker
+ *   INSERT succeeds) → purchase (COD sits in new/processing until Uniware invoices or ships; prepaid reaches
+ *   processing on capture; a dismissed pending_payment order paid later also lands here exactly once)
  * - canceled and a marker exists (we announced, or it's a seeded historic buyer order) → order_canceled
  * - anything else (new, pending_payment, holded, closed…) → nothing
  *
@@ -25,6 +25,12 @@ class PurchaseDetector
     public const EVER_PAID_STATES = ['processing', 'complete', 'closed'];
     private const MAX_AGE_SECONDS = 7 * 86400;
 
+    /** COD is placed as state new, status processing, and is a real order from then on. */
+    public static function isPurchased(string $state, string $status): bool
+    {
+        return in_array($state, self::PAID_STATES, true) || ($state === 'new' && $status === 'processing');
+    }
+
     public function __construct(
         private readonly PurchaseMarkerStoreInterface $markers,
         private readonly Enqueuer $enqueuer,
@@ -33,7 +39,7 @@ class PurchaseDetector
     }
 
     /**
-     * @param array{order_id:int, increment_id:string, email:string, store_id:int, state:string, created_at:string} $order
+     * @param array{order_id:int, increment_id:string, email:string, store_id:int, state:string, status?:string, created_at:string} $order
      */
     public function handle(array $order): void
     {
@@ -46,7 +52,7 @@ class PurchaseDetector
                 return;
             }
 
-            if (in_array($state, self::PAID_STATES, true)) {
+            if (self::isPurchased($state, (string)($order['status'] ?? ''))) {
                 $created = strtotime(($order['created_at'] ?? '') . ' UTC');
                 if ($created === false || $created < time() - self::MAX_AGE_SECONDS) {
                     return;

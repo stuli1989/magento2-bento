@@ -107,10 +107,12 @@ class Recover implements HttpGetActionInterface
                 $isSameCustomerLoggedIn = $this->customerSession->isLoggedIn()
                     && (int)$this->customerSession->getCustomerId() === (int)$quote->getCustomerId();
 
-                // The signed link was emailed to this customer, the same proof the storefront's own
-                // email sign-in accepts, so a logged-out customer goes straight to their cart.
+                // A signed link emailed to this customer, or sent to their own WhatsApp number, is the same
+                // proof the storefront's own sign-in accepts, so a logged-out customer goes straight to their
+                // cart. A WhatsApp link to someone else's number (a gift recipient's) can't sign in.
                 if ($isSameCustomerLoggedIn
-                    || (!$this->customerSession->isLoggedIn() && $this->signIn((int)$quote->getCustomerId(), $email))) {
+                    || (!$this->customerSession->isLoggedIn() && $tokenData['sign_in']
+                        && $this->signIn((int)$quote->getCustomerId(), $email))) {
                     $this->checkoutSession->setQuoteId($quoteId);
                     $this->messageManager->addSuccessMessage(
                         __('Your cart has been restored.')

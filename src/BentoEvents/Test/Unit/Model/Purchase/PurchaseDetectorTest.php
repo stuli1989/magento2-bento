@@ -61,12 +61,21 @@ class PurchaseDetectorTest extends TestCase
         return array_values(array_map(fn ($r) => $r['dedup_key'], $this->outbox->rows));
     }
 
-    public function testCodOrderGoingStraightToProcessingIsAPurchase(): void
+    public function testCodOrderIsAPurchaseAtPlacementAndOnlyOnce(): void
     {
-        $this->detector->handle($this->order('new'));
-        $this->detector->handle($this->order('processing'));
+        $this->detector->handle(['status' => 'pending'] + $this->order('new'));
+        $this->assertSame([], $this->types(), 'a new/pending Razorpay order is not paid');
+        $this->detector->handle(['status' => 'processing'] + $this->order('new'));
+        $this->detector->handle(['status' => 'processing'] + $this->order('processing'));
         $this->assertSame(['purchase:100045'], $this->types());
         $this->assertSame('a+bentotest@x.com', $this->outbox->rows[1]['email']);
+    }
+
+    public function testCanceledCodOrderAnnouncedAtPlacementFiresOrderCanceled(): void
+    {
+        $this->detector->handle(['status' => 'processing'] + $this->order('new'));
+        $this->detector->handle(['status' => 'canceled'] + $this->order('canceled'));
+        $this->assertCount(2, $this->types());
     }
 
     public function testPendingPaymentIsNeverAPurchase(): void

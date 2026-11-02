@@ -140,6 +140,19 @@ class StatsCalculatorTest extends TestCase
         $this->assertSame('Watercolour Paint & Mediums, Acrylic Paint & Mediums, Pencils', $f['top_categories']);
     }
 
+    public function testCodOrderAwaitingInvoiceCounts(): void
+    {
+        $f = $this->calc->calculate(
+            [['status' => 'processing'] + $this->order('1', 'new', '2026-10-13 09:00:00', 500.0, 0.0, null),
+             ['status' => 'pending'] + $this->order('2', 'new', '2026-10-14 09:00:00', 900.0, 0.0, null)],
+            [],
+            ['is_registered' => false, 'created_at' => null],
+            $this->tree,
+            []
+        );
+        $this->assertSame(1, (int)$f['order_count']);
+    }
+
     public function testLastPurchaseDateAndEventTimestampShareOneFormatter(): void
     {
         // Bento flows exit on: visitor.last_purchase_date > event.details.timestamp (lexical).

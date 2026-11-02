@@ -253,6 +253,17 @@ class RecoverTest extends TestCase
         $this->createRecoverController($mocks)->execute();
     }
 
+    public function testWhatsAppLinkSendsALoggedOutCustomerToTheLoginPage(): void
+    {
+        [$mocks] = $this->loggedOutCustomerCart('Test@Example.com', false);
+        $mocks['urlBuilder']->method('getUrl')->willReturn('https://example.com/bento/cart/recover');
+        $mocks['customerSession']->expects($this->never())->method('setCustomerDataAsLoggedIn');
+        $mocks['checkoutSession']->expects($this->never())->method('setQuoteId');
+        $mocks['redirect']->expects($this->once())->method('setPath')->with('customer/account/login')->willReturn($mocks['redirect']);
+
+        $this->createRecoverController($mocks)->execute();
+    }
+
     public function testLinkSentToAnotherAddressDoesNotLogAnyoneIn(): void
     {
         [$mocks] = $this->loggedOutCustomerCart('someone-else@example.com');
@@ -277,11 +288,11 @@ class RecoverTest extends TestCase
     }
 
     /** @return array{0: array, 1: CustomerInterface} */
-    private function loggedOutCustomerCart(string $accountEmail = 'Test@Example.com'): array
+    private function loggedOutCustomerCart(string $accountEmail = 'Test@Example.com', bool $signIn = true): array
     {
         $mocks = $this->createRecoverMocks();
         $this->mockRequestParams($mocks['request'], ['recover' => 'signed-token']);
-        $mocks['recoveryToken']->method('parse')->willReturn(['quote_id' => 10, 'email' => 'test@example.com', 'store_id' => 1]);
+        $mocks['recoveryToken']->method('parse')->willReturn(['quote_id' => 10, 'email' => 'test@example.com', 'store_id' => 1, 'sign_in' => $signIn]);
         $quote = $this->createMock(CartInterface::class);
         $quote->method('getCustomerEmail')->willReturn('test@example.com');
         $quote->method('getIsActive')->willReturn(true);

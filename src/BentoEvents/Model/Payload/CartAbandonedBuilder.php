@@ -44,14 +44,15 @@ class CartAbandonedBuilder implements BuilderInterface
         if ($quote === null) {
             return BuildResult::skip('quote ' . $row->entityId . ' not found');
         }
+        // First: a dismissed Magic Checkout order sits on an active quote, and emptying that cart is still emptying it.
+        if (!empty($quote['is_active']) && (int)$quote['items_count'] < 1) {
+            return BuildResult::skip(self::SKIP_EMPTY);
+        }
         if (!empty($quote['has_order'])) {
             return BuildResult::skip('converted to an order');
         }
         if (empty($quote['is_active'])) {
             return BuildResult::skip('cart no longer active');
-        }
-        if ((int)$quote['items_count'] < 1) {
-            return BuildResult::skip(self::SKIP_EMPTY);
         }
 
         if (empty($quote['phone']) && !empty($quote['customer_id'])) {
@@ -60,7 +61,9 @@ class CartAbandonedBuilder implements BuilderInterface
 
         $details = $this->mapper->details($quote);
         $details['phone'] = $details['customer']['phone'];
-        $details['recovery_url'] = $this->urls->build($row->entityId, $row->email, $row->storeId);
+        // details.recovery_url feeds WhatsApp: it signs in only on the customer's own number. Email always may.
+        $details['recovery_url'] = $this->urls->build($row->entityId, $row->email, $row->storeId, null,
+            !empty($quote['customer_id']) && $this->customers->ownsPhone((int)$quote['customer_id'], $details['phone']));
 
         $decision = $this->couponGate->evaluate((float)$quote['subtotal'], $row->entityId, $row->storeId);
         $details['coupon_eligible'] = $decision['eligible'] && $decision['coupon'] !== null;
@@ -75,7 +78,7 @@ class CartAbandonedBuilder implements BuilderInterface
             ];
         }
 
-        $snapshot = SnapshotFields::cart($details['cart']['items'], (float)$quote['subtotal'], $details['recovery_url'])
+        $snapshot = SnapshotFields::cart($details['cart']['items'], (float)$quote['subtotal'], $this->urls->build($row->entityId, $row->email, $row->storeId))
             + SnapshotFields::cartCoupon($details['coupon'] ?? null)
             + $this->ladder->cartFields($row->storeId, (float)$quote['subtotal'], (float)($quote['discount_amount'] ?? 0));
 

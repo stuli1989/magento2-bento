@@ -50,8 +50,19 @@ class CheckoutAbandonedBuilder implements BuilderInterface
             if ($snapshot === null) {
                 return BuildResult::skip('order ' . $row->entityId . ' not found');
             }
-            if (in_array($snapshot['state'] ?? '', PurchaseDetector::EVER_PAID_STATES, true)) {
+            if (in_array($snapshot['state'] ?? '', PurchaseDetector::EVER_PAID_STATES, true)
+                || PurchaseDetector::isPurchased((string)($snapshot['state'] ?? ''), (string)($snapshot['status'] ?? ''))) {
                 return BuildResult::skip('paid since dismissal');
+            }
+            // Closing the popup restores this quote with its items, so active and empty means the customer emptied it.
+            $quote = $this->quotes->load((int)($snapshot['quote_id'] ?? 0));
+            if ($quote !== null && !empty($quote['is_active']) && (int)$quote['items_count'] < 1) {
+                return BuildResult::skip(CartAbandonedBuilder::SKIP_EMPTY);
+            }
+            // The customer may have edited the restored cart: the emails show the cart, not the closed attempt.
+            if ($quote !== null && !empty($quote['is_active']) && !empty($quote['items'])) {
+                $snapshot = ['items' => $quote['items'], 'subtotal' => $quote['subtotal'],
+                    'grand_total' => $quote['grand_total'], 'discount_amount' => $quote['discount_amount']] + $snapshot;
             }
             $source = 'dismissed';
         } else {
@@ -83,7 +94,9 @@ class CheckoutAbandonedBuilder implements BuilderInterface
         }
         $quoteId = (int)$snapshot['quote_id'];
         $subtotal = (float)($snapshot['subtotal'] ?? 0);
-        $details['recovery_url'] = $this->urls->build($quoteId, $row->email, $row->storeId);
+        // details.recovery_url feeds WhatsApp: it signs in only on the customer's own number. Email always may.
+        $ownNumber = !empty($snapshot['customer_id']) && $this->customers->ownsPhone((int)$snapshot['customer_id'], $details['phone']);
+        $details['recovery_url'] = $this->urls->build($quoteId, $row->email, $row->storeId, null, $ownNumber);
 
         $decision = $this->couponGate->evaluate($subtotal, $quoteId, $row->storeId);
         $details['coupon_eligible'] = $decision['eligible'] && $decision['coupon'] !== null;
@@ -103,8 +116,9 @@ class CheckoutAbandonedBuilder implements BuilderInterface
             '$checkout_abandoned',
             $details,
             null,
-            $this->mapper->fields($snapshot),
-            SnapshotFields::cart($details['cart']['items'], $subtotal, $details['recovery_url'])
+            // A customer's checkout can carry a gift recipient's number: keep it off their profile.
+            empty($snapshot['customer_id']) || $ownNumber ? $this->mapper->fields($snapshot) : array_diff_key($this->mapper->fields($snapshot), ['phone' => 1]),
+            SnapshotFields::cart($details['cart']['items'], $subtotal, $this->urls->build($quoteId, $row->email, $row->storeId))
                 + SnapshotFields::cartCoupon($details['coupon'] ?? null)
             + $this->ladder->cartFields($row->storeId, $subtotal, (float)($snapshot['discount_amount'] ?? 0))
         ));

@@ -31,9 +31,11 @@ class RecoveryToken
      * @param int $quoteId
      * @param string $email
      * @param int $storeId
+     * @param bool $signIn false for a WhatsApp link to a number that isn't the customer's own, such as a gift
+     *                     recipient's: it restores a guest cart but never opens the account
      * @return string|null
      */
-    public function generate(int $quoteId, string $email, int $storeId): ?string
+    public function generate(int $quoteId, string $email, int $storeId, bool $signIn = true): ?string
     {
         $normalizedEmail = strtolower(trim($email));
         if ($quoteId < 1 || $normalizedEmail === '') {
@@ -47,6 +49,9 @@ class RecoveryToken
             's' => $storeId,
             'x' => $this->dateTime->gmtTimestamp() + self::DEFAULT_TTL_SECONDS
         ];
+        if (!$signIn) {
+            $payload['n'] = 1;
+        }
 
         $payloadJson = $this->json->serialize($payload);
         $encodedPayload = $this->base64UrlEncode($payloadJson);
@@ -65,7 +70,7 @@ class RecoveryToken
      *
      * @param string $token
      * @param int $expectedStoreId Store ID from current request context
-     * @return array{quote_id:int,email:string,store_id:int}
+     * @return array{quote_id:int,email:string,store_id:int,sign_in:bool}
      */
     public function parse(string $token, int $expectedStoreId): array
     {
@@ -114,7 +119,8 @@ class RecoveryToken
         return [
             'quote_id' => $quoteId,
             'email' => strtolower($email),
-            'store_id' => $storeId
+            'store_id' => $storeId,
+            'sign_in' => empty($payload['n'])
         ];
     }
 

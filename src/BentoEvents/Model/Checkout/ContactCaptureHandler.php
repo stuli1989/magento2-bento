@@ -66,6 +66,9 @@ class ContactCaptureHandler
             return [404, ['ok' => false]];
         }
 
+        // Same rule as a dismissed popup: a logged-in customer is reached at the account email.
+        $email = $this->context->loggedInEmail() ?: $email;
+
         try {
             $phone = Phone::normalize(mb_substr((string)($params['phone'] ?? ''), 0, 32));
             $due = gmdate('Y-m-d H:i:s', $now + $this->config->getContactCaptureDelayMinutes($storeId) * 60);

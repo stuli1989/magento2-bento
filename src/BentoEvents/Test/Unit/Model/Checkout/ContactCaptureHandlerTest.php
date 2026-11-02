@@ -17,6 +17,7 @@ class ContactCaptureHandlerTest extends TestCase
     private array $stored = [];
     private array $rate = [];
     private bool $enabled = true;
+    private ?string $loggedInEmail = null;
     private ContactCaptureHandler $handler;
 
     protected function setUp(): void
@@ -30,6 +31,7 @@ class ContactCaptureHandlerTest extends TestCase
             fn ($rzp) => $rzp === 'order_PQ1abcDEF23xyz' ? 9001 : null
         );
         $ctx->method('storeId')->willReturn(1);
+        $ctx->method('loggedInEmail')->willReturnCallback(fn () => $this->loggedInEmail);
         $config = $this->createMock(ConfigInterface::class);
         $config->method('isContactCaptureEnabled')->willReturnCallback(fn () => $this->enabled);
         $config->method('getContactCaptureDelayMinutes')->willReturn(30);
@@ -55,6 +57,13 @@ class ContactCaptureHandlerTest extends TestCase
         $this->assertSame('+919820012345', $phone);
         $this->assertSame(1, $storeId);
         $this->assertEqualsWithDelta(time() + 1800, strtotime($due . ' UTC'), 5);
+    }
+
+    public function testLoggedInCustomerIsStoredUnderTheAccountNotRazorpaysContact(): void
+    {
+        $this->loggedInEmail = 'account+bentotest@x.com';
+        $this->assertSame(200, $this->post([])[0]);
+        $this->assertSame('account+bentotest@x.com', $this->stored[0][2]);
     }
 
     public function testBadFormKeyIs403(): void

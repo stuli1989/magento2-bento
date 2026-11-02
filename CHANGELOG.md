@@ -4,6 +4,18 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.3.7] — 2026-11-02
+
+### Fixed
+- **A logged-in customer's abandoned checkout now goes to their account email.** Magic Checkout can carry the contact Razorpay saved against the phone number, so the email and its recovery link could go to an address that isn't the account's. The link then couldn't sign them in. A dismissed popup and a contact capture now use the logged-in account's email; guests keep the checkout email.
+- **A WhatsApp recovery link signs in only on the customer's own number.** It goes to the phone on the checkout, which can be a family member's or a gift recipient's. `details.recovery_url` signs in with one tap when that number is the account's phone or the default address's; otherwise it carries a signed no-sign-in flag and a customer's cart goes to the login page. The WhatsApp Pay button is unaffected, and the emailed link, `last_cart_recovery_url`, always signs in. A number that isn't the customer's is also kept off their Bento profile.
+- **COD orders count as purchases when placed.** COD sits in state `new`, status `processing` until Uniware invoices or ships, so `$purchase` came days late, or never past 7 days, and buyers kept getting recovery mail. Detection, reconcile, the abandonment checks, profile stats and seeded markers all treat that pair as purchased, and cancelling one fires `$OrderCanceled`.
+- **A dismissed checkout's cart is read from the live cart.** Closing the popup restores the quote. If the customer then empties it, the refresh sends `last_cart_item_count` `"0"`. This replaces the 2.3.6 note that a dismissed row keeps its items and count. If they edit it, the emails show the edited cart. A quote that is active with no items counts as emptied even when it has a dismissed order, because Razorpay only ever restores it with its items.
+- **Returning guests' cart changes keep their identity on every page.** The stored email was only re-attached on product pages, so `$cart_updated` elsewhere went out anonymous.
+- **Idle carts read up to 5,000 rows per pass**, so a long backlog can't starve today's abandoned carts.
+
+---
+
 ## [2.3.6] — 2026-11-01
 
 ### Added

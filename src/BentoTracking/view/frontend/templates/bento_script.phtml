@@ -199,6 +199,8 @@ require(['jquery', 'Magento_Customer/js/customer-data', 'domReady!'], function($
         // track() calls include the email in the payload.
         try {
             var storedEmail = localStorage.getItem('bento_identity');
+            // getEmail() reads the stored identity, but the SDK attaches it only after identify() on this page.
+            if (storedEmail) { bento.identify(storedEmail); }
             if (storedEmail && !bento.getEmail()) {
                 bento.identify(storedEmail);
                 bentoIdentified = true;

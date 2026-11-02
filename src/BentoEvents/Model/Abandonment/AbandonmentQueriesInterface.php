@@ -13,7 +13,7 @@ interface AbandonmentQueriesInterface
      * $idleBeforeUtc, grand total ≥ $minValue, with no sales_order at all.
      * @return array<int, array{quote_id:int, email:string, store_id:int, updated_at:string}>
      */
-    public function idleCarts(string $idleBeforeUtc, float $minValue, int $limit = 500): array;
+    public function idleCarts(string $idleBeforeUtc, float $minValue, int $limit = 5000): array;
 
     /**
      * Sent $cart_abandoned / $checkout_abandoned rows created since $sinceUtc, newest first.

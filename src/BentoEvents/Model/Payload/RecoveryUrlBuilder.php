@@ -21,10 +21,10 @@ class RecoveryUrlBuilder
      * Signed, expiring link to bento/cart/recover. A coupon (when given) is a path param and is
      * auto-applied by the Recover controller.
      */
-    public function build(int $quoteId, string $email, int $storeId, ?string $couponCode = null): ?string
+    public function build(int $quoteId, string $email, int $storeId, ?string $couponCode = null, bool $signIn = true): ?string
     {
         try {
-            $token = $this->recoveryToken->generate($quoteId, $email, $storeId);
+            $token = $this->recoveryToken->generate($quoteId, $email, $storeId, $signIn);
             if ($token === null) {
                 return null;
             }

@@ -125,8 +125,22 @@ class RazorpayPluginsTest extends TestCase
         $this->assertSame($result, $plugin->afterExecute(new PlaceOrder(), $result));
     }
 
+    public function testDismissedPopupGoesToTheLoggedInAccountNotRazorpaysSavedContact(): void
+    {
+        $this->order = ['order_id' => 45, 'increment_id' => '100045', 'quote_id' => 9001,
+            'email' => 'razorpay-contact@x.com', 'store_id' => 1, 'state' => 'pending_payment'];
+
+        $this->abandonedPlugin($this->createMock(ContactStore::class))->afterExecute(
+            new AbandonedQuote(['rzp_order_id' => 'order_PQ1abcDEF23xyz']),
+            $this->json(self::ABANDONED_SUCCESS, 200)
+        );
+
+        $this->assertSame('kshitij+bentotest@gmail.com', $this->outbox->rows[1]['email']);
+    }
+
     public function testDismissedPopupWithPendingPaymentOrderQueuesCheckoutAbandoned(): void
     {
+        $this->loggedInEmail = null;
         $this->order = ['order_id' => 45, 'increment_id' => '100045', 'quote_id' => 9001,
             'email' => 'Guest+bentotest@x.com', 'store_id' => 1, 'state' => 'pending_payment'];
         $contacts = $this->createMock(ContactStore::class);

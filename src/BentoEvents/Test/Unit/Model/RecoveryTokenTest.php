@@ -30,6 +30,16 @@ class RecoveryTokenTest extends TestCase
         $this->json->method('unserialize')->willReturnCallback(static fn(string $json): array => json_decode($json, true) ?: []);
     }
 
+    public function testOnlyTheWhatsAppTokenRefusesSignIn(): void
+    {
+        $this->config->method('getSecretKey')->willReturn('secret');
+        $this->dateTime->method('gmtTimestamp')->willReturn(1000);
+        $tokens = new RecoveryToken($this->config, $this->json, $this->dateTime);
+
+        $this->assertTrue($tokens->parse($tokens->generate(10, 'a@x.com', 1), 1)['sign_in']);
+        $this->assertFalse($tokens->parse($tokens->generate(10, 'a@x.com', 1, false), 1)['sign_in']);
+    }
+
     public function testGenerateReturnsNullForInvalidInput(): void
     {
         $tokenService = new RecoveryToken($this->config, $this->json, $this->dateTime);

@@ -13,6 +13,7 @@ namespace ArtLounge\BentoEvents\Model\Profile;
 
 use ArtLounge\BentoCore\Model\IstDate;
 use ArtLounge\BentoCore\Model\Money;
+use ArtLounge\BentoEvents\Model\Purchase\PurchaseDetector;
 
 class StatsCalculator
 {
@@ -28,7 +29,7 @@ class StatsCalculator
     {
         $counted = array_values(array_filter(
             $orders,
-            static fn (array $o) => in_array($o['state'] ?? '', self::COUNTED_STATES, true)
+            static fn (array $o) => PurchaseDetector::isPurchased((string)($o['state'] ?? ''), (string)($o['status'] ?? ''))
         ));
         usort($counted, static fn ($a, $b) => strcmp((string)$a['created_at'], (string)$b['created_at']));
 

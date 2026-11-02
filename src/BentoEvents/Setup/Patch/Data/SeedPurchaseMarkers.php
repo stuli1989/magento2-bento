@@ -29,7 +29,7 @@ class SeedPurchaseMarkers implements DataPatchInterface
                 'purchased_at' => 'created_at',
                 'seeded' => new \Zend_Db_Expr('1'),
             ])
-            ->where('state IN (?)', ['processing', 'complete', 'closed', 'canceled']);
+            ->where("state IN (?) OR (state = 'new' AND status = 'processing')", ['processing', 'complete', 'closed', 'canceled']);
 
         $conn->query($conn->insertFromSelect(
             $select,

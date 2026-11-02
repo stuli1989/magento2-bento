@@ -32,7 +32,7 @@ class ProfileLoader
         $select = $c->select()
             ->from(['so' => $this->t('sales_order')], [
                 'email' => new \Zend_Db_Expr('LOWER(so.customer_email)'),
-                'increment_id', 'state', 'created_at',
+                'increment_id', 'state', 'status', 'created_at',
                 'grand_total' => 'so.base_grand_total',
                 'total_refunded' => new \Zend_Db_Expr('COALESCE(so.base_total_refunded, 0)'),
             ])
@@ -67,7 +67,7 @@ class ProfileLoader
                     ),
                 ])
                 ->where('so.customer_email IN (?)', $emails)
-                ->where('so.state IN (?)', StatsCalculator::COUNTED_STATES)
+                ->where("so.state IN (?) OR (so.state = 'new' AND so.status = 'processing')", StatsCalculator::COUNTED_STATES)
                 ->where('soi.parent_item_id IS NULL')
         );
         $productIds = array_values(array_unique(array_map(static fn ($r) => (int)$r['product_id'], $rows)));
@@ -148,7 +148,7 @@ class ProfileLoader
         return $c->fetchCol(
             $c->select()
                 ->from($this->t('sales_order'), ['email' => new \Zend_Db_Expr('LOWER(customer_email)')])
-                ->where('state IN (?)', StatsCalculator::COUNTED_STATES)
+                ->where("state IN (?) OR (state = 'new' AND status = 'processing')", StatsCalculator::COUNTED_STATES)
                 ->where('customer_email IS NOT NULL AND customer_email <> ""')
                 ->where('LOWER(customer_email) > ?', $afterEmail)
                 ->group(new \Zend_Db_Expr('LOWER(customer_email)'))
@@ -168,7 +168,7 @@ class ProfileLoader
         return $c->fetchCol(
             $c->select()
                 ->from($this->t('sales_order'), ['email' => new \Zend_Db_Expr('LOWER(customer_email)')])
-                ->where('state IN (?)', StatsCalculator::COUNTED_STATES)
+                ->where("state IN (?) OR (state = 'new' AND status = 'processing')", StatsCalculator::COUNTED_STATES)
                 ->where('customer_email IS NOT NULL AND customer_email <> ""')
                 ->where('created_at >= ?', $since)
                 ->group(new \Zend_Db_Expr('LOWER(customer_email)'))

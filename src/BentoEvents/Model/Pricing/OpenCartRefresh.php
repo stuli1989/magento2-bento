@@ -5,11 +5,10 @@
  * after the abandon). Rebuilds each email's newest sent $cart_abandoned / $checkout_abandoned row with its own
  * builder and sends only the fields (/batch/subscribers), never a new event. Carts since converted are skipped by
  * the builders. A cart emptied since depends on the row:
- *  - cart_abandoned, quote active, no items, no order: sends only last_cart_item_count "0", so the flows' "still in?"
- *    splits can stop its emails. The number overwrites only that field, and refilling the cart rebuilds them all.
- *  - cart_abandoned on a quote with any order, even a dismissed pending_payment one: skipped as converted, nothing sent.
+ *  - cart_abandoned, or dismissed checkout_abandoned, quote active with no items: sends only last_cart_item_count "0",
+ *    so the flows' "still in?" splits can stop its emails. The number overwrites only that field, and refilling the
+ *    cart rebuilds them all.
  *  - checkout_abandoned, contact: unchanged, the full snapshot with integer 0 and a zero subtotal.
- *  - checkout_abandoned, dismissed: rebuilt from the order, so the items and count stay as they were.
  * Obeys the test-mode allow-list.
  * ponytail: the discount is the quote's stored total (as of the customer's last cart visit); opening the cart recollects it.
  */

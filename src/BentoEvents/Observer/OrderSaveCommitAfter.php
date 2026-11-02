@@ -30,6 +30,7 @@ class OrderSaveCommitAfter implements ObserverInterface
             'email' => (string)$order->getCustomerEmail(),
             'store_id' => (int)$order->getStoreId(),
             'state' => (string)$order->getState(),
+            'status' => (string)$order->getStatus(),
             'created_at' => (string)($order->getCreatedAt() ?: gmdate('Y-m-d H:i:s')),
         ]);
     }

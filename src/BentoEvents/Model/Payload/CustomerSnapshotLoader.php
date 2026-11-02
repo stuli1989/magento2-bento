@@ -6,14 +6,43 @@ namespace ArtLounge\BentoEvents\Model\Payload;
 
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Customer\Api\GroupRepositoryInterface;
+use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\NoSuchEntityException;
 
 class CustomerSnapshotLoader
 {
     public function __construct(
         private readonly CustomerRepositoryInterface $customerRepository,
-        private readonly GroupRepositoryInterface $groupRepository
+        private readonly GroupRepositoryInterface $groupRepository,
+        private readonly ResourceConnection $resource
     ) {
+    }
+
+    /**
+     * Is this the customer's own number: their account phone (the one WhatsApp sign-in uses, when the store has
+     * that column) or the one on their default billing address? False on any doubt.
+     */
+    public function ownsPhone(int $customerId, ?string $phone): bool
+    {
+        $phone = Phone::normalize($phone);
+        if ($phone === null) {
+            return false;
+        }
+        if (Phone::normalize($this->defaultPhone($customerId)) === $phone) {
+            return true;
+        }
+        try {
+            $c = $this->resource->getConnection();
+            $table = $this->resource->getTableName('customer_entity');
+            if (!$c->tableColumnExists($table, 'phone_e164')) {
+                return false;
+            }
+            $saved = $c->fetchOne($c->select()->from($table, ['phone_e164'])->where('entity_id = ?', $customerId));
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return is_string($saved) && Phone::normalize($saved) === $phone;
     }
 
     /** The telephone on the customer's default billing address (else their first address); null if none or on any error. */

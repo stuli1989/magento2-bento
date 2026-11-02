@@ -218,6 +218,87 @@ class QuoteBuildersTest extends TestCase
         );
     }
 
+    public function testCartEmptiedOnAQuoteWithADismissedOrderIsReportedAsEmptied(): void
+    {
+        $this->quotes->method('load')->willReturn($this->quote(['has_order' => true, 'items_count' => 0]));
+        $b = new CartAbandonedBuilder($this->quotes, new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
+        $this->assertSame(CartAbandonedBuilder::SKIP_EMPTY, $b->build($this->row('cart_abandoned', 'quote', 9001))->skipReason);
+    }
+
+    public function testDismissedCheckoutWhoseCartWasEmptiedIsReportedAsEmptied(): void
+    {
+        $this->orders->method('load')->willReturn(Fixtures::order(['state' => 'pending_payment', 'quote_id' => 9001]));
+        $this->quotes->method('load')->with(9001)->willReturn($this->quote(['has_order' => true, 'items_count' => 0]));
+        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
+        $this->assertSame(CartAbandonedBuilder::SKIP_EMPTY, $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->skipReason);
+    }
+
+    public function testWhatsAppLinkSignsInOnlyOnTheCustomersOwnNumber(): void
+    {
+        $this->orders->method('load')->willReturn(Fixtures::order(['state' => 'pending_payment', 'quote_id' => 9001, 'customer_id' => 7]));
+        $this->customers->method('ownsPhone')->willReturnOnConsecutiveCalls(true, false);
+        $calls = [];
+        $urls = $this->createMock(RecoveryUrlBuilder::class);
+        $urls->method('build')->willReturnCallback(function ($q, $e, $s, $coupon = null, $signIn = true) use (&$calls) {
+            $calls[] = $signIn;
+            return 'https://local/r';
+        });
+        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
+            new QuotePayloadMapper(), $urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
+
+        $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']));
+        $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']));
+
+        $this->assertSame([true, true, false, true], $calls, 'WhatsApp link then email link, per build');
+    }
+
+    public function testAGiftRecipientsNumberStaysOffTheCustomersProfileButStillGetsTheMessage(): void
+    {
+        $this->orders->method('load')->willReturn(Fixtures::order(['state' => 'pending_payment', 'quote_id' => 9001, 'customer_id' => 7]));
+        $this->customers->method('ownsPhone')->willReturn(false);
+        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
+
+        $e = $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->event;
+
+        $this->assertArrayNotHasKey('phone', $e['fields']);
+        $this->assertSame('+919820012345', $e['details']['phone']);
+    }
+
+    public function testDismissedCodOrderIsSkippedAsPaid(): void
+    {
+        $this->orders->method('load')->willReturn(Fixtures::order(['state' => 'new', 'status' => 'processing', 'quote_id' => 9001]));
+        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
+        $this->assertSame('paid since dismissal', $b->build($this->row('checkout_abandoned', 'order', 45))->skipReason);
+    }
+
+    public function testDismissedCheckoutShowsTheEditedCartButKeepsTheOrderNumber(): void
+    {
+        $this->orders->method('load')->willReturn(Fixtures::order(['state' => 'pending_payment', 'quote_id' => 9001]));
+        $this->quotes->method('load')->willReturn($this->quote(['has_order' => true, 'subtotal' => 600.0, 'grand_total' => 600.0, 'discount_amount' => 0.0]));
+        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
+        $e = $b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->event;
+        $this->assertSame(60000, (int)$e['fields']['last_cart_subtotal']);
+        $this->assertNotSame('', $e['details']['order_increment_id']);
+    }
+
+    public function testDismissedCheckoutKeepsItsEventWhileTheCartStillHasItemsOrIsInactive(): void
+    {
+        $this->orders->method('load')->willReturn(Fixtures::order(['state' => 'pending_payment', 'quote_id' => 9001]));
+        $this->quotes->method('load')->willReturnOnConsecutiveCalls(
+            $this->quote(['has_order' => true]),                                  // popup closed, cart restored
+            $this->quote(['has_order' => true, 'is_active' => false, 'items_count' => 0])  // not provably emptied
+        );
+        $b = new CheckoutAbandonedBuilder($this->orders, $this->quotes, $this->createMock(ContactStore::class),
+            new QuotePayloadMapper(), $this->urls, $this->gate(), $this->envelope, $this->customers, $this->ladder);
+        for ($i = 0; $i < 2; $i++) {
+            $this->assertFalse($b->build($this->row('checkout_abandoned', 'order', 45, ['source' => 'dismissed']))->isSkip());
+        }
+    }
+
     public function testInactiveEmptyCartIsNotReportedAsEmptied(): void
     {
         $this->quotes->method('load')->willReturn($this->quote(['is_active' => false, 'items_count' => 0]));

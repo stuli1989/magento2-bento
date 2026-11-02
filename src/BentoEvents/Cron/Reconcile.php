@@ -63,7 +63,7 @@ class Reconcile
         $rows = $conn->fetchAll(
             $conn->select()
                 ->from(['so' => $this->resource->getTableName('sales_order')], [
-                    'entity_id', 'increment_id', 'customer_email', 'store_id', 'state', 'created_at',
+                    'entity_id', 'increment_id', 'customer_email', 'store_id', 'state', 'status', 'created_at',
                 ])
                 ->joinLeft(
                     ['p' => $this->resource->getTableName('artlounge_bento_purchase')],
@@ -72,7 +72,7 @@ class Reconcile
                 )
                 ->where('so.updated_at >= ?', gmdate('Y-m-d H:i:s', time() - 48 * 3600))
                 ->where('so.created_at >= ?', gmdate('Y-m-d H:i:s', time() - 7 * 86400))
-                ->where('so.state IN (?)', PurchaseDetector::PAID_STATES)
+                ->where("so.state IN (?) OR (so.state = 'new' AND so.status = 'processing')", PurchaseDetector::PAID_STATES)
         );
 
         $n = 0;
@@ -84,6 +84,7 @@ class Reconcile
                     'email' => (string)$r['customer_email'],
                     'store_id' => (int)$r['store_id'],
                     'state' => (string)$r['state'],
+                    'status' => (string)$r['status'],
                     'created_at' => (string)$r['created_at'],
                 ]);
                 $n++;
