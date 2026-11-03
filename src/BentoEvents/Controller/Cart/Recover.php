@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace ArtLounge\BentoEvents\Controller\Cart;
 
 use ArtLounge\BentoEvents\Model\RecoveryToken;
+use ArtLounge\BentoEvents\Service\CouponService;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Customer\Model\AuthenticationInterface;
@@ -44,7 +45,8 @@ class Recover implements HttpGetActionInterface
         private readonly CustomerRepositoryInterface $customerRepository,
         private readonly AuthenticationInterface $authentication,
         private readonly CookieManagerInterface $cookieManager,
-        private readonly CookieMetadataFactory $cookieMetadataFactory
+        private readonly CookieMetadataFactory $cookieMetadataFactory,
+        private readonly CouponService $coupons
     ) {
     }
 
@@ -152,6 +154,8 @@ class Recover implements HttpGetActionInterface
             $couponCode = $this->request->getParam('coupon');
             if ($couponCode && is_string($couponCode)) {
                 try {
+                    // An earlier popup exit may have spent the emailed code: give this cart a working one.
+                    $couponCode = $this->coupons->freshFor($couponCode, $quoteId, (int)$quote->getStoreId()) ?? $couponCode;
                     $quote->setCouponCode($couponCode);
                     $quote->collectTotals();
                     $this->cartRepository->save($quote);

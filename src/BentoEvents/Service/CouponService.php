@@ -112,16 +112,43 @@ class CouponService
     }
 
     /**
-     * Find existing coupon by quote ID (dedup by description only — survives rule recreation).
+     * A fresh code for this quote when $code is this quote's own code and it's used up: closing the Razorpay
+     * popup writes a pending_payment order that spends the single use, and nothing ever gives it back.
+     * Null when $code isn't ours, belongs to another quote, or still works.
+     */
+    public function freshFor(string $code, int $quoteId, int $storeId): ?string
+    {
+        $collection = $this->couponCollectionFactory->create();
+        $collection->addFieldToFilter('code', $code);
+        $collection->setPageSize(1);
+        $coupon = $collection->getFirstItem();
+        if (!$coupon || !$coupon->getId() || $coupon->getDescription() !== self::DESCRIPTION_PREFIX . $quoteId
+            || !self::isUsedUp($coupon)) {
+            return null;
+        }
+
+        return $this->generateForCart($quoteId, $storeId)['code'] ?? null;
+    }
+
+    private static function isUsedUp($coupon): bool
+    {
+        $limit = (int)$coupon->getUsageLimit();
+
+        return $limit > 0 && (int)$coupon->getTimesUsed() >= $limit;
+    }
+
+    /**
+     * The quote's newest code (dedup by description only — survives rule recreation), unless it's used up.
      */
     private function findExistingCoupon(int $quoteId): ?array
     {
         $collection = $this->couponCollectionFactory->create();
         $collection->addFieldToFilter('description', self::DESCRIPTION_PREFIX . $quoteId);
+        $collection->setOrder('coupon_id', 'DESC');
         $collection->setPageSize(1);
 
         $coupon = $collection->getFirstItem();
-        if ($coupon && $coupon->getId()) {
+        if ($coupon && $coupon->getId() && !self::isUsedUp($coupon)) {
             return [
                 'code' => $coupon->getCode(),
                 'expires_at' => IstDate::formatOrNull($coupon->getExpirationDate())

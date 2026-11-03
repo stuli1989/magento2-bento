@@ -41,6 +41,11 @@ class Enqueuer
         try {
             $email = strtolower(trim($email));
             $resolvable = $email === '' && is_string($context['bento_uuid'] ?? null) && $context['bento_uuid'] !== '';
+            // Razorpay fills a phone-only checkout's email as <phone>@<merchant site>, e.g. 9189…@www.artlounge.in.
+            // ponytail: no real mailbox domain starts with "www.", so that test is enough; widen it if Razorpay changes it.
+            if (str_starts_with(substr(strrchr($email, '@') ?: '', 1), 'www.')) {
+                return false;
+            }
             if (($email === '' && !$resolvable) || !$this->config->isEnabled($storeId ?: null)) {
                 return false;
             }

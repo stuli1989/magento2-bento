@@ -19,4 +19,7 @@ class Coupon
     public function setDescription($description) { return $this; }
     public function getCode() { return null; }
     public function getExpirationDate() { return null; }
+    public function getDescription() { return null; }
+    public function getUsageLimit() { return null; }
+    public function getTimesUsed() { return null; }
 }

@@ -4,6 +4,14 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.3.9] — 2026-11-03
+
+### Fixed
+- **A recovery coupon spent by a closed Razorpay popup is replaced, not resent.** Closing Magic Checkout writes a `pending_payment` order that uses the single-use code, and Razorpay's pending-order cron only cancels status `pending`, so the use never comes back. The next `$cart_abandoned`/`$checkout_abandoned` now mints a fresh code for the quote instead of reissuing the dead one, and an emailed recovery link carrying a used-up code of that same quote applies a fresh code to the cart.
+- **Razorpay phone-only placeholder emails are no longer queued.** A checkout with only a phone number reaches Magento as `<phone>@www.artlounge.in`; events for addresses whose domain starts with `www.` are dropped instead of creating Bento profiles that bounce.
+
+---
+
 ## [2.3.8] — 2026-11-02
 
 ### Fixed

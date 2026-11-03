@@ -48,6 +48,13 @@ class EnqueuerTest extends TestCase
         $this->assertCount(1, $this->store->rows);
     }
 
+    public function testRazorpayPhonePlaceholderEmailIsNotQueued(): void
+    {
+        $this->assertFalse($this->enqueuer->enqueue('checkout_abandoned', 'order', 45, '918925030177@www.artlounge.in', 1, 'x:1'));
+        $this->assertTrue($this->enqueuer->enqueue('checkout_abandoned', 'order', 46, 'priya@artlounge.in', 1, 'x:2'));
+        $this->assertCount(1, $this->store->rows);
+    }
+
     public function testEmptyEmailIsNotQueued(): void
     {
         $this->assertFalse($this->enqueuer->enqueue('purchase', 'order', 45, '  ', 1, 'purchase:1'));

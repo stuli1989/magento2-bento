@@ -356,6 +356,7 @@ class RecoverTest extends TestCase
             'authentication' => $this->createMock(AuthenticationInterface::class),
             'cookieManager' => $this->createMock(CookieManagerInterface::class),
             'cookieMetadataFactory' => $this->createMock(CookieMetadataFactory::class),
+            'coupons' => $this->createMock(\ArtLounge\BentoEvents\Service\CouponService::class),
         ];
     }
 
@@ -375,7 +376,8 @@ class RecoverTest extends TestCase
             $mocks['customerRepository'],
             $mocks['authentication'],
             $mocks['cookieManager'],
-            $mocks['cookieMetadataFactory']
+            $mocks['cookieMetadataFactory'],
+            $mocks['coupons']
         );
     }
 

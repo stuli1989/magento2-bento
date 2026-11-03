@@ -8,6 +8,7 @@ class Collection
 {
     public function addFieldToFilter($field, $condition = null) { return $this; }
     public function setPageSize($size) { return $this; }
+    public function setOrder($field, $direction = 'DESC') { return $this; }
     public function getFirstItem() { return null; }
     public function getSize() { return 0; }
 }

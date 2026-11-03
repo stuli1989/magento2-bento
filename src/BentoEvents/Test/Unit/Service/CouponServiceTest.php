@@ -39,6 +39,7 @@ class CouponServiceTest extends TestCase
                 return $c;
             });
             $c->method('setPageSize')->willReturnSelf();
+            $c->method('setOrder')->willReturnSelf();
             $c->method('getFirstItem')->willReturnCallback(fn () => $this->existing);
             $c->method('getSize')->willReturn(0);
             return $c;
@@ -62,6 +63,46 @@ class CouponServiceTest extends TestCase
         $this->assertSame('BENTO-ABC234', $coupon['code']);
         $this->assertSame('2026-10-26T15:30:00+05:30', $coupon['expires_at']);
         $this->assertContains(['description', 'bento_quote_9001'], $this->filters);
+    }
+
+    public function testAUsedUpCodeIsNotReissued(): void
+    {
+        // A popup exit wrote a pending_payment order that spent BENTO-ABC234; the next event must not resend it.
+        $this->existing = $this->usedCoupon('BENTO-ABC234', 'bento_quote_9001');
+        $resource = $this->createMock(CouponResource::class);
+        $resource->expects($this->once())->method('save');
+
+        $coupon = $this->service($resource)->generateForCart(9001, 1);
+
+        $this->assertNotSame('BENTO-ABC234', $coupon['code']);
+        $this->assertContains(['description', 'bento_quote_9001'], $this->filters);
+    }
+
+    public function testFreshForSwapsOnlyThisQuotesUsedUpCode(): void
+    {
+        $resource = $this->createMock(CouponResource::class);
+
+        $this->existing = $this->usedCoupon('BENTO-ABC234', 'bento_quote_9001');
+        $this->assertMatchesRegularExpression('/^BENTO-[A-Z2-9]{6}$/', (string)$this->service($resource)->freshFor('BENTO-ABC234', 9001, 1));
+        $this->assertNull($this->service($resource)->freshFor('BENTO-ABC234', 9002, 1), 'a code from another cart stays as it is');
+
+        $this->existing = $this->createMock(Coupon::class);
+        $this->existing->method('getId')->willReturn(13);
+        $this->existing->method('getDescription')->willReturn('bento_quote_9001');
+        $this->existing->method('getUsageLimit')->willReturn(1);
+        $this->existing->method('getTimesUsed')->willReturn(0);
+        $this->assertNull($this->service($resource)->freshFor('BENTO-ABC234', 9001, 1), 'a code that still works stays');
+    }
+
+    private function usedCoupon(string $code, string $description): Coupon
+    {
+        $c = $this->createMock(Coupon::class);
+        $c->method('getId')->willReturn(12);
+        $c->method('getCode')->willReturn($code);
+        $c->method('getDescription')->willReturn($description);
+        $c->method('getUsageLimit')->willReturn(1);
+        $c->method('getTimesUsed')->willReturn(1);
+        return $c;
     }
 
     public function testFirstEventForAQuoteMintsOneSingleUseCode(): void
