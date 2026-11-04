@@ -61,7 +61,7 @@ class Recover implements HttpGetActionInterface
         $token = $this->request->getParam('recover');
 
         if (!$token) {
-            return $redirect->setPath('checkout/cart');
+            return $this->toPath($redirect, 'checkout/cart');
         }
 
         $autoPayRequested = ((int)$this->request->getParam('autopay', 0)) === 1;
@@ -90,7 +90,7 @@ class Recover implements HttpGetActionInterface
                 $this->messageManager->addNoticeMessage(
                     __('This cart has already been converted to an order or is no longer available.')
                 );
-                return $redirect->setPath('checkout/cart');
+                return $this->toPath($redirect, 'checkout/cart');
             }
 
             // Check quote has items
@@ -98,7 +98,7 @@ class Recover implements HttpGetActionInterface
                 $this->messageManager->addNoticeMessage(
                     __('This cart is empty.')
                 );
-                return $redirect->setPath('checkout/cart');
+                return $this->toPath($redirect, 'checkout/cart');
             }
 
             // Restore the cart to session
@@ -135,7 +135,7 @@ class Recover implements HttpGetActionInterface
                         );
                     }
 
-                    return $redirect->setPath('customer/account/login');
+                    return $this->toPath($redirect, 'customer/account/login');
                 }
             } else {
                 // Guest cart - restore directly
@@ -183,7 +183,7 @@ class Recover implements HttpGetActionInterface
             $this->messageManager->addErrorMessage(
                 __('The cart recovery link is invalid or has expired.')
             );
-            return $redirect->setPath('checkout/cart');
+            return $this->toPath($redirect, 'checkout/cart');
 
         } catch (\Exception $e) {
             $this->logger->error('Cart recovery failed', [
@@ -193,7 +193,7 @@ class Recover implements HttpGetActionInterface
             $this->messageManager->addErrorMessage(
                 __('We could not restore your cart. Please try again or contact support.')
             );
-            return $redirect->setPath('checkout/cart');
+            return $this->toPath($redirect, 'checkout/cart');
         }
     }
 
@@ -239,8 +239,32 @@ class Recover implements HttpGetActionInterface
         }
 
         return [
-            '_query' => $query
+            '_query' => $query + $this->utmQuery()
         ];
+    }
+
+    private const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+
+    /**
+     * The email link's utm_* tags, carried through the redirect so analytics credits the visit to the email
+     * that brought the customer back (a 302 without them lands on the cart as a direct visit).
+     */
+    private function utmQuery(): array
+    {
+        $query = [];
+        foreach (self::UTM_KEYS as $key) {
+            $value = $this->request->getParam($key);
+            if (is_string($value) && $value !== '' && strlen($value) <= 100) {
+                $query[$key] = $value;
+            }
+        }
+        return $query;
+    }
+
+    private function toPath(\Magento\Framework\Controller\Result\Redirect $redirect, string $path)
+    {
+        $utm = $this->utmQuery();
+        return $utm ? $redirect->setPath($path, ['_query' => $utm]) : $redirect->setPath($path);
     }
 
     /**

@@ -82,6 +82,36 @@ class RecoverTest extends TestCase
         $controller->execute();
     }
 
+    public function testEmailUtmTagsSurviveTheRedirect(): void
+    {
+        $mocks = $this->createRecoverMocks();
+        $this->mockRequestParams($mocks['request'], ['recover' => 'signed-token', 'utm_source' => 'bento', 'utm_medium' => 'email',
+            'utm_campaign' => 'lc_cart_abandonment', 'utm_content' => 'CA-01', 'utm_term' => 'cart_recovery', 'utm_id' => 'dropped']);
+        $mocks['recoveryToken']->method('parse')->with('signed-token')->willReturn(['quote_id' => 10, 'email' => 'test@example.com', 'store_id' => 1]);
+        $quote = $this->createMock(CartInterface::class);
+        $quote->method('getCustomerEmail')->willReturn('test@example.com');
+        $quote->method('getIsActive')->willReturn(true);
+        $quote->method('getItemsCount')->willReturn(1);
+        $quote->method('getCustomerId')->willReturn(null);
+        $quote->method('getStoreId')->willReturn(1);
+        $mocks['cartRepository']->method('get')->with(10)->willReturn($quote);
+        $mocks['redirect']->expects($this->once())->method('setPath')->with('checkout/cart', ['_query' => [
+            'bento_recovered' => 1, 'utm_source' => 'bento', 'utm_medium' => 'email', 'utm_campaign' => 'lc_cart_abandonment',
+            'utm_content' => 'CA-01', 'utm_term' => 'cart_recovery',
+        ]])->willReturn($mocks['redirect']);
+        $this->createRecoverController($mocks)->execute();
+    }
+
+    public function testEmailUtmTagsSurviveAnExpiredLink(): void
+    {
+        $mocks = $this->createRecoverMocks();
+        $this->mockRequestParams($mocks['request'], ['recover' => 'bad', 'utm_source' => 'bento', 'utm_content' => 'CA-01']);
+        $mocks['recoveryToken']->method('parse')->willThrowException(new \InvalidArgumentException('expired'));
+        $mocks['redirect']->expects($this->once())->method('setPath')
+            ->with('checkout/cart', ['_query' => ['utm_source' => 'bento', 'utm_content' => 'CA-01']])->willReturn($mocks['redirect']);
+        $this->createRecoverController($mocks)->execute();
+    }
+
     public function testExecuteRestoresGuestCartWithoutEmailOnQuote(): void
     {
         // Contact captured in the Magic Checkout popup: the token carries the email,

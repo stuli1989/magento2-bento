@@ -4,6 +4,13 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.3.10] — 2026-11-04
+
+### Fixed
+- **Recovery links keep the email's `utm_*` tags.** `bento/cart/recover` answered with a bare 302 to the cart, so Google Analytics saw a visit from a cart or checkout email's main button as direct, and couldn't credit the order to the email. Every redirect it makes (the cart, an expired link, the login page) now carries `utm_source`, `utm_medium`, `utm_campaign`, `utm_content` and `utm_term` through. Other parameters are not passed, and none longer than 100 characters.
+
+---
+
 ## [2.3.9] — 2026-11-03
 
 ### Fixed
