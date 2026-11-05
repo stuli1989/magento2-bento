@@ -10,6 +10,7 @@ use ArtLounge\BentoCore\Model\SendResult;
 use ArtLounge\BentoCore\Model\TestMode;
 use ArtLounge\BentoEvents\Cron\RefreshNextPicks;
 use ArtLounge\BentoEvents\Model\Picks\Refresh;
+use ArtLounge\BentoEvents\Model\Picks\RestockLog;
 use ArtLounge\BentoEvents\Model\Profile\CategoryTree;
 use ArtLounge\BentoEvents\Model\Profile\ProfileFieldsProvider;
 use ArtLounge\BentoEvents\Model\Profile\ProfileLoader;
@@ -178,10 +179,14 @@ class RefreshTest extends TestCase
         $this->config->method('isConfigured')->willReturnOnConsecutiveCalls(false, true);
         $refresh->expects($this->once())->method('run')->with(null, true, true, null) // null = admin Refresh Window
             ->willReturn(['recent' => 2, 'vips' => 1, 'sent' => 2, 'sample' => [['email' => 'a@x.com']]]);
-        $logger->expects($this->once())->method('info')
-            ->with('Bento product lists refreshed', ['recent' => 2, 'vips' => 1, 'sent' => 2]);
+        $restock = $this->createMock(RestockLog::class);
+        $restock->expects($this->once())->method('update')->willReturn(['restocked' => 4, 'changed' => 9]);
+        $logger->expects($this->exactly(2))->method('info')->withConsecutive(
+            ['Bento restock log updated', ['restocked' => 4, 'changed' => 9]], // restocks first: they feed new_in_*
+            ['Bento product lists refreshed', ['recent' => 2, 'vips' => 1, 'sent' => 2]]
+        );
 
-        $cron = new RefreshNextPicks($refresh, $this->config, $logger);
+        $cron = new RefreshNextPicks($refresh, $this->config, $logger, $restock);
         $cron->execute(); // not configured: nothing
         $cron->execute();
     }

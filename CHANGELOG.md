@@ -4,6 +4,16 @@ All notable changes to this project are documented below. This project follows [
 
 ---
 
+## [2.4.0] — 2026-11-05
+
+### Changed
+- **`new_in_*` counts new variants and restocks, not just brand-new product pages.** Before, a range counted as new only if the configurable itself was created in the window, so a new colour on an existing range never did, and Art Lounge rarely creates whole new ranges: `new_in_*` came back blank for nearly every customer, and the "Just in" emails had nothing to show. Now a product arrives when it is added **or comes back in stock**, and a range arrives when it or any sellable variant does. The other rules are unchanged (window, after the customer's last order, their medium, in stock, never bought, never a current pick). A range that arrived through a variant is shown as that variant (name + image).
+
+### Added
+- **Restock log** `artlounge_bento_stock_seen` (`RestockLog`), updated by the nightly `artlounge_bento_next_picks` cron just before the lists refresh. A simple/variant that was out of stock (not in stock, or qty ≤ 0) and is now in stock at or above "Minimum stock" gets `back_in_stock_at`. 1–2 units in between change nothing. The first run only records what it sees, so restocks count from the day after deploy; new variants count straight away.
+
+---
+
 ## [2.3.10] — 2026-11-04
 
 ### Fixed

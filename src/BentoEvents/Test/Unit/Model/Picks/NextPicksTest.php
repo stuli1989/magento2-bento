@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArtLounge\BentoEvents\Test\Unit\Model\Picks;
 
 use ArtLounge\BentoEvents\Model\Picks\NextPicks;
+use ArtLounge\BentoEvents\Model\Picks\RestockLog;
 use PHPUnit\Framework\TestCase;
 
 class NextPicksTest extends TestCase
@@ -113,20 +114,38 @@ class NextPicksTest extends TestCase
 
     // ---------- new_in_* ----------
 
-    public function testNewArrivalWindowCountsOnlyParentsThatAreNewThemselves(): void
+    public function testANewVariantOrARestockMakesTheRangeANewArrival(): void
     {
-        $createdAt = [
+        $arrivedAt = [
             1 => '2026-09-01 00:00:00',  // new simple
             2 => '2026-01-01 00:00:00',  // old simple
             30 => '2025-05-01 00:00:00', // old configurable …
-            31 => '2026-10-01 00:00:00', // … with a new variant: not a new arrival
-            40 => '2026-08-01 00:00:00', // new configurable
+            31 => '2026-10-01 00:00:00', // … with a new variant (or a restocked one): a new arrival
+            32 => '2026-10-05 00:00:00', // … and a later one: that variant is shown
+            40 => '2026-08-01 00:00:00', // new configurable, its variant the same day
             41 => '2026-08-01 00:00:00',
             5 => '2026-06-25 00:00:00',  // exactly on the window start
         ];
-        $parents = NextPicks::newArrivals($createdAt, [31 => 30, 41 => 40], '2026-06-25 00:00:00');
-        sort($parents);
-        $this->assertSame([1, 5, 40], $parents);
+        [$at, $variant] = NextPicks::arrivals($arrivedAt, [31 => 30, 32 => 30, 41 => 40], '2026-06-25 00:00:00');
+        ksort($at);
+        $this->assertSame([1 => '2026-09-01 00:00:00', 5 => '2026-06-25 00:00:00', 30 => '2026-10-05 00:00:00', 40 => '2026-08-01 00:00:00'], $at);
+        $this->assertSame([30 => 32, 40 => 41], $variant, 'tie on date: higher id (the variant) wins');
+    }
+
+    public function testRestockDiff(): void
+    {
+        // last night: 1 in, 2 out, 3 out, 4 in. Now: 2 back, 4 gone, 5 new and in, 6 new and out; 3 has 1-2 units (in neither list)
+        [$restocked, $flags] = RestockLog::diff([1 => 1, 2 => 0, 3 => 0, 4 => 1], [1, 2, 5], [4, 6]);
+        $this->assertSame([2], $restocked, 'only an out-of-stock item coming back counts; first sightings do not');
+        ksort($flags);
+        $this->assertSame([2 => 1, 4 => 0, 5 => 1, 6 => 0], $flags);
+    }
+
+    public function testRestockDiffFirstRunRecordsWithoutRestocks(): void
+    {
+        [$restocked, $flags] = RestockLog::diff([], [1, 2], [3]);
+        $this->assertSame([], $restocked);
+        $this->assertSame([1 => 1, 2 => 1, 3 => 0], $flags);
     }
 
     public function testNewArrivalsAreNewestFirst(): void

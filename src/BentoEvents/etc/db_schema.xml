@@ -63,6 +63,19 @@
         </index>
     </table>
 
+    <!-- Restock log: what each simple/variant's stock looked like last night (RestockLog) -->
+    <table name="artlounge_bento_stock_seen" resource="default" engine="innodb" comment="Bento Restock Log">
+        <column xsi:type="int" name="product_id" unsigned="true" nullable="false" comment="catalog_product_entity.entity_id"/>
+        <column xsi:type="smallint" name="in_stock" unsigned="true" nullable="false" default="0" comment="1 = in stock at or above Minimum stock when last seen"/>
+        <column xsi:type="datetime" name="back_in_stock_at" nullable="true" comment="Last time it came back in stock (UTC)"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="product_id"/>
+        </constraint>
+        <index referenceId="ARTLOUNGE_BENTO_STOCK_SEEN_BACK_IN_STOCK_AT" indexType="btree">
+            <column name="back_in_stock_at"/>
+        </index>
+    </table>
+
     <!-- Contact captured from the Razorpay Magic Checkout popup (browser) -->
     <table name="artlounge_bento_checkout_contact" resource="default" engine="innodb" comment="Bento Magic Checkout Contact Capture">
         <column xsi:type="int" name="id" unsigned="true" nullable="false" identity="true" comment="ID"/>

@@ -132,5 +132,18 @@
             "PRIMARY": true,
             "ARTLOUNGE_BENTO_CHECKOUT_CONTACT_RZP_ORDER_ID": true
         }
+    },
+    "artlounge_bento_stock_seen": {
+        "column": {
+            "product_id": true,
+            "in_stock": true,
+            "back_in_stock_at": true
+        },
+        "index": {
+            "ARTLOUNGE_BENTO_STOCK_SEEN_BACK_IN_STOCK_AT": true
+        },
+        "constraint": {
+            "PRIMARY": true
+        }
     }
 }

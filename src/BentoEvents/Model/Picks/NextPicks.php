@@ -165,24 +165,37 @@ final class NextPicks
     }
 
     /**
-     * Parents created at/after $since. A parent counts only when it is new itself: a new variant
-     * added to an old configurable is not a new arrival.
+     * When each parent last "arrived": the latest arrival among itself and its variants, if at/after $since.
+     * A product arrives when it is created or comes back in stock (caller passes the later of the two), so a
+     * new colour on an old range or a restocked tube both make the range a new arrival. The caller passes
+     * only arrivals that count (variants must be sellable).
      *
-     * @param array<int,string> $createdAt product id => created_at ('Y-m-d H:i:s', UTC)
+     * @param array<int,string> $arrivedAt product id => 'Y-m-d H:i:s' (UTC)
      * @param array<int,int> $parentOf child id => configurable parent id
-     * @return int[]
+     * @return array{0:array<int,string>,1:array<int,int>} [parent => arrived at, configurable => the variant
+     *         that arrived last (only when a variant, not the range itself, is the newest; ties: higher id)]
      */
-    public static function newArrivals(array $createdAt, array $parentOf, string $since): array
+    public static function arrivals(array $arrivedAt, array $parentOf, string $since): array
     {
-        $out = [];
-        foreach ($createdAt as $id => $at) {
-            $parent = $parentOf[(int)$id] ?? (int)$id;
-            if ((string)($createdAt[$parent] ?? '') >= $since) {
-                $out[$parent] = $parent;
+        $at = $variant = [];
+        foreach ($arrivedAt as $id => $when) {
+            $when = (string)$when;
+            if ($when < $since) {
+                continue;
+            }
+            $id = (int)$id;
+            $parent = $parentOf[$id] ?? $id;
+            if (!isset($at[$parent]) || [$when, $id] > [$at[$parent], $variant[$parent] ?? $parent]) {
+                $at[$parent] = $when;
+                if ($parent === $id) {
+                    unset($variant[$parent]);
+                } else {
+                    $variant[$parent] = $id;
+                }
             }
         }
 
-        return array_values($out);
+        return [$at, $variant];
     }
 
     /**

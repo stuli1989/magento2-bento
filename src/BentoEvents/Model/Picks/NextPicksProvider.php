@@ -3,7 +3,8 @@
  * Product-list subscriber fields for a batch of customers (NextPicks is the rule; this is the data):
  *  - next_pick_*: admin "Add-on categories per medium" (descendants included), ranked by units sold on
  *    non-canceled orders in the sales window, pins first.
- *  - new_in_*: products created in the new-arrivals window AND after the customer's last order, whose medium
+ *  - new_in_*: products that arrived (were added, a new variant was added, or came back in stock: RestockLog)
+ *    in the new-arrivals window AND after the customer's last order, whose medium
  *    (Category → Medium Map, deepest mapped category wins, as for primary_medium) is the customer's; newest
  *    first; never a current next pick.
  *  - usual_*: what the customer has bought in ≥ 2 separate orders.
@@ -32,7 +33,7 @@ class NextPicksProvider
 {
     private const VISIBLE = [2, 3, 4]; // catalog, search, catalog+search
 
-    /** @var array{0:array<string,int[]>,1:array<string,int[]>,2:array<int,int>,3:array<string,int[]>,4:array<int,float>,5:array<int,string>}|null */
+    /** @var array{0:array<string,int[]>,1:array<string,int[]>,2:array<int,int>,3:array<string,int[]>,4:array<int,float>,5:array<int,string>,6:array<int,int>}|null */
     private ?array $candidates = null;
     private ?int $storeId = null;
 
@@ -42,7 +43,8 @@ class NextPicksProvider
         private readonly CatalogLookup $catalog,
         private readonly ProfileLoader $profileLoader,
         private readonly StoreManagerInterface $storeManager,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly RestockLog $restock
     ) {
     }
 
@@ -56,7 +58,7 @@ class NextPicksProvider
             return [];
         }
         try {
-            [$ranked, $pinned, $variantOf, $newest, $productUnits, $createdAt] = $this->candidates();
+            [$ranked, $pinned, $variantOf, $newest, $productUnits, $createdAt, $newVariantOf] = $this->candidates();
             $lines = $this->purchaseLines(array_keys($mediumByEmail));
             $picks = $newIn = $usualShow = [];
             foreach ($mediumByEmail as $email => $medium) {
@@ -72,8 +74,14 @@ class NextPicksProvider
                 $usualShow[$email] = NextPicks::usuals($lines[$email] ?? [], $eligible, $sellable, $bestVariant);
             }
 
-            $parents = array_merge([], ...array_values($picks), ...array_values($newIn));
-            $ids = array_merge($parents, array_values(array_intersect_key($variantOf, array_flip($parents))));
+            $pickParents = array_values(array_unique(array_merge([], ...array_values($picks))));
+            $newParents = array_values(array_unique(array_merge([], ...array_values($newIn))));
+            $parents = array_merge($pickParents, $newParents);
+            $ids = array_merge(
+                $parents,
+                array_values(array_intersect_key($variantOf, array_flip($pickParents))),
+                array_values(array_intersect_key($newVariantOf, array_flip($newParents)))
+            );
             foreach ($usualShow as $show) {
                 $ids = array_merge($ids, array_keys($show), array_values($show));
             }
@@ -82,12 +90,13 @@ class NextPicksProvider
             if ($missing = array_diff($ids, array_keys($products))) {
                 throw new \RuntimeException('catalog lookup missing products ' . implode(',', $missing));
             }
-            $display = NextPicks::display(array_values(array_unique($parents)), $variantOf, $products);
+            $display = NextPicks::display($pickParents, $variantOf, $products);
+            $newDisplay = NextPicks::display($newParents, $newVariantOf, $products);
             $out = [];
             foreach ($mediumByEmail as $email => $medium) {
                 $usuals = NextPicks::display(array_keys($usualShow[$email]), $usualShow[$email], $products);
                 $out[$email] = NextPicks::fields($picks[$email], $display, 'next_pick_')
-                    + NextPicks::fields($newIn[$email], $display, 'new_in_')
+                    + NextPicks::fields($newIn[$email], $newDisplay, 'new_in_')
                     + NextPicks::fields(array_keys($usualShow[$email]), $usuals, 'usual_');
             }
 
@@ -100,10 +109,10 @@ class NextPicksProvider
     }
 
     /**
-     * @return array{0:array<string,int[]>,1:array<string,int[]>,2:array<int,int>,3:array<string,int[]>,4:array<int,float>,5:array<int,string>}
+     * @return array{0:array<string,int[]>,1:array<string,int[]>,2:array<int,int>,3:array<string,int[]>,4:array<int,float>,5:array<int,string>,6:array<int,int>}
      *         [medium => ranked pick parents, medium => pinned parents, configurable => variant shown,
      *          medium (and "any") => new-arrival parents newest first, product id => units sold,
-     *          new-arrival parent => created_at]
+     *          new-arrival parent => arrived at, new-arrival configurable => variant shown]
      */
     public function candidates(): array
     {
@@ -128,27 +137,45 @@ class NextPicksProvider
             $parentOf = $this->parentsOf($ids);
             $pinned[$medium] = array_values(array_unique(array_map(static fn ($id) => $parentOf[$id] ?? $id, $ids)));
         }
-        [$newest, $newVariants, $createdAt] = $this->newArrivals($productUnits);
+        [$newest, $newVariants, $arrivedAt] = $this->newArrivals($productUnits);
 
-        return $this->candidates = [$ranked, $pinned, $variantOf + $newVariants, $newest, $productUnits, $createdAt];
+        return $this->candidates = [$ranked, $pinned, $variantOf, $newest, $productUnits, $arrivedAt, $newVariants];
     }
 
     /**
-     * Eligible parents created in the new-arrivals window, by medium; "any" = every mapped medium.
+     * Eligible parents that arrived in the new-arrivals window (added, new variant, or back in stock), by
+     * medium; "any" = every mapped medium. A variant only counts while it is sellable.
      * @return array{0:array<string,int[]>,1:array<int,int>,2:array<int,string>}
-     *         [medium => newest-first parent ids, configurable => variant, eligible parent => created_at]
+     *         [medium => newest-first parent ids, configurable => variant shown, eligible parent => arrived at]
      */
     private function newArrivals(array $productUnits): array
     {
         $c = $this->conn();
         $since = gmdate('Y-m-d H:i:s', time() - $this->config->getNewArrivalsWindowDays() * 86400);
-        $createdAt = $c->fetchPairs($c->select()->from($this->t('catalog_product_entity'), ['entity_id', 'created_at']));
-        $recent = array_keys(array_filter($createdAt, static fn ($at) => (string)$at >= $since));
-        $parents = NextPicks::newArrivals($createdAt, $this->parentsOf($recent), $since);
-        [$eligible, $variants] = $this->filter($parents, $productUnits);
+        $arrivedAt = array_filter(
+            $c->fetchPairs($c->select()->from($this->t('catalog_product_entity'), ['entity_id', 'created_at'])),
+            static fn ($at) => (string)$at >= $since
+        );
+        foreach ($this->restock->backInStockSince($since) as $id => $at) {
+            if ((string)$at > (string)($arrivedAt[$id] ?? '')) {
+                $arrivedAt[$id] = (string)$at;
+            }
+        }
+        $parentOf = $this->parentsOf(array_keys($arrivedAt));
+        [$candidates] = NextPicks::arrivals($arrivedAt, $parentOf, $since);
+        [$eligible, $bestVariant, $sellable] = $this->filter(array_keys($candidates), $productUnits);
+        // a variant that is out of stock (or disabled) has not really arrived
+        $counted = array_filter(
+            $arrivedAt,
+            static fn ($at, $id) => !isset($parentOf[$id]) || isset($sellable[$id]),
+            ARRAY_FILTER_USE_BOTH
+        );
+        [$dates, $arrivedVariant] = NextPicks::arrivals($counted, $parentOf, $since);
+        $eligible = array_values(array_intersect($eligible, array_keys($dates)));
         if (!$eligible) {
             return [[], [], []];
         }
+        $variants = $arrivedVariant + $bestVariant;
         $categoryIds = [];
         foreach ($c->fetchAll(
             $c->select()->from($this->t('catalog_category_product'), ['product_id', 'category_id'])->where('product_id IN (?)', $eligible)
@@ -167,9 +194,9 @@ class NextPicksProvider
         }
 
         return [
-            array_map(static fn (array $ids) => NextPicks::newestFirst($ids, $createdAt), $byMedium),
-            $variants,
-            array_map('strval', array_intersect_key($createdAt, array_flip($eligible))),
+            array_map(static fn (array $ids) => NextPicks::newestFirst($ids, $dates), $byMedium),
+            array_intersect_key($variants, array_flip($eligible)),
+            array_intersect_key($dates, array_flip($eligible)),
         ];
     }
 
